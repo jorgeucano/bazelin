@@ -1,3 +1,4 @@
+/*
 const fs = require('fs-extra');
 const npm = require('npm');
 
@@ -36,3 +37,4 @@ function loadPackage() {
 }
 
 exports.module = loadPackage;
+*/
