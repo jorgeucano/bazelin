@@ -52,10 +52,10 @@ export interface Workspace {
   srcPath: string;
   srcFolder: BazelinFolder;
 
-  /* pointers to all folders */
-  allFolders: Set<BazelinFolder>;
   /* pointers to all files */
-  allFiles: Set<BazelinFile>;
+  filePathToFileMap: Map<string, BazelinFile>;
+  /* pointers to all folders */
+  folderPathToFolderMap: Map<string, BazelinFolder>;
 }
 
 /* EXTRACT END */
@@ -79,8 +79,8 @@ async function main(_args: { srcPath: string, rootDir: string }) {
   const workspace = await readWorkSpace({
     ..._args,
     srcFolder,
-    allFiles: new Set(),
-    allFolders: new Set([srcFolder])
+    filePathToFileMap: new Map(),
+    folderPathToFolderMap: new Map([[_args.srcPath, srcFolder]])
   });
 
   // const filesTree = await readFilesList(absSrcPath);

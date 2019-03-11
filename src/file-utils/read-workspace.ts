@@ -26,7 +26,7 @@ async function readFolder(workspace: Workspace, dir: BazelinFolder): Promise<Baz
       });
 
       dir.folders.add(_newDirectory);
-      workspace.allFolders.add(_newDirectory);
+      workspace.folderPathToFolderMap.set(_newDirectory.path, _newDirectory);
     } else {
       const _fileObj: BazelinFile = {
         name: node,
@@ -34,7 +34,7 @@ async function readFolder(workspace: Workspace, dir: BazelinFolder): Promise<Baz
         folder: dir
       };
       dir.files.add(_fileObj);
-      workspace.allFiles.add(_fileObj);
+      workspace.filePathToFileMap.set(_fileObj.path, _fileObj);
     }
   }
 

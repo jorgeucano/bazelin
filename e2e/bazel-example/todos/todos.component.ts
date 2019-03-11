@@ -26,7 +26,7 @@ export class TodosComponent implements OnInit {
     this.todo = '';
   }
 
-  deleteTodo(index) {
+deleteTodo(index) {W
     this.store.dispatch({type: DELETE_TODO, payload: {index}});
   }
 
