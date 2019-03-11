@@ -60,6 +60,39 @@ export interface Workspace {
 
 /* EXTRACT END */
 
+/* should return a list of internal and external dependencies
+ * from given file to other sass files and assets (like fonts) */
+async function getSassFilesDependencies(file: BazelinFile) {
+  return null;
+}
+
+/* should return a list of dependencies from give file to:
+- external modules (3rd party)
+- internal TS files
+- html and sass files (from Component Metadata)
+  */
+async function getTSFileDependencies(file: BazelinFile) {
+  return null;
+}
+
+/*EXTRACT FUNC START*/
+const _isSassFile = /\.(sass|scss)$/;
+async function readFilesDependencies(workspace: Workspace) {
+  await workspace.filePathToFileMap.forEach(async (file, filePath) => {
+    if (_isSassFile.test(file.name)) {
+      const sassFilesDependecies = await getSassFilesDependencies(file);
+    }
+
+    if (/\.ts/.test(file.name)) {
+      const tsFileDependecies = await getTSFileDependencies(file);
+    }
+    console.log(filePath);
+  });
+}
+
+/*EXTRACT FUNC END*/
+
+
 /*
 1. Read workspace structure
 2. Do tree walk-through
@@ -83,9 +116,9 @@ async function main(_args: { srcPath: string, rootDir: string }) {
     folderPathToFolderMap: new Map([[_args.srcPath, srcFolder]])
   });
 
-  // const filesTree = await readFilesList(absSrcPath);
-  console.log(workspace);
+  await readFilesDependencies(workspace);
 
+  console.log('done');
 }
 
 main(args);
