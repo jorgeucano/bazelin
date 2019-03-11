@@ -1,6 +1,9 @@
 {
   "name": "bazelin",
   "version": "0.0.0",
+  "bin": {
+    "fix-sass-imports": "./dist/bin/fix-sass-imports-cli.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "try-cli": "node ./dist/bazelin-cli.js"

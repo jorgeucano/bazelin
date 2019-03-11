@@ -1,7 +1,7 @@
 import { readFile, stat, writeFile } from 'fs-extra';
 import { join, relative, dirname } from 'path';
 import { args } from '../args-parser';
-import { readFilesList } from '../read-files-list';
+import { readFilesList } from '../file-utils/read-files-list';
 
 const gonzales = require('gonzales-pe');
 
