@@ -24,6 +24,9 @@ Sorting internal vs external imports
 import { args } from '../args-parser';
 import { readProjectDependencies } from '../file-utils/read-dependencies';
 import { readWorkSpace } from '../file-utils/read-workspace';
+import { readFile } from 'fs-extra';
+
+const gonzales = require('gonzales-pe');
 
 /* EXTRACT START  */
 export interface BazelinFile {
@@ -58,11 +61,47 @@ export interface Workspace {
   folderPathToFolderMap: Map<string, BazelinFolder>;
 }
 
+export interface SassFilesDeps {
+  filePath: string;
+  external: Set<string>;
+  internal: Set<string>;
+}
+
 /* EXTRACT END */
 
 /* should return a list of internal and external dependencies
  * from given file to other sass files and assets (like fonts) */
 async function getSassFilesDependencies(file: BazelinFile) {
+
+  const fileDeps = await readFile(file.path, 'utf8');
+  const parsed = gonzales.parse(fileDeps, {syntax: 'scss'});
+
+  const depsFiles: SassFilesDeps = {
+    filePath: file.path,
+    external: new Set(),
+    internal: new Set()
+  };
+
+  parsed.forEach('atrule', (node: any, index: number) => {
+    const atkeyword = node.first('atkeyword').first('ident');
+
+    if (atkeyword.content !== 'import') {
+      return;
+    }
+
+    const importNode = node.first('string');
+    const importString = importNode.content;
+
+    if (importString[1] === '~') {
+      const _importString = importString.substr(2, importString.length - 1);
+      importNode.content = [importString[0], _importString, importString[importString.length]].join('');
+
+      depsFiles.external.add(importNode.content);
+    } else {
+      depsFiles.internal.add(importNode.content);
+    }
+  });
+  console.log(depsFiles);
   return null;
 }
 
@@ -77,6 +116,7 @@ async function getTSFileDependencies(file: BazelinFile) {
 
 /*EXTRACT FUNC START*/
 const _isSassFile = /\.(sass|scss)$/;
+
 async function readFilesDependencies(workspace: Workspace) {
   await workspace.filePathToFileMap.forEach(async (file, filePath) => {
     if (_isSassFile.test(file.name)) {
@@ -86,7 +126,7 @@ async function readFilesDependencies(workspace: Workspace) {
     if (/\.ts/.test(file.name)) {
       const tsFileDependecies = await getTSFileDependencies(file);
     }
-    console.log(filePath);
+    // console.log(filePath); // TODO return to uncomment
   });
 }
 
