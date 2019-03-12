@@ -22,8 +22,11 @@ Sorting internal vs external imports
 */
 
 import { args } from '../args-parser';
-import { readProjectDependencies } from '../file-utils/read-dependencies';
+import { ProjectDependencies, readProjectDependencies } from '../file-utils/read-dependencies';
 import { readWorkSpace } from '../file-utils/read-workspace';
+import { readFileSync } from 'fs';
+import * as ts from 'typescript';
+import { SyntaxKind, SourceFile } from 'typescript';
 import { readFile } from 'fs-extra';
 
 const gonzales = require('gonzales-pe');
@@ -65,6 +68,19 @@ export interface SassFilesDeps {
   filePath: string;
   external: Set<string>;
   internal: Set<string>;
+}
+
+export interface TsFilesDeps {
+  filePath: string;
+  external: Set<string>;
+  internal: Set<string>;
+  html: Set<string>;
+  styles: Set<string>;
+}
+
+export interface Args {
+  srcPath: string;
+  rootDir: string;
 }
 
 /* EXTRACT END */
@@ -113,9 +129,56 @@ async function getSassFilesDependencies(file: BazelinFile) {
 - external modules (3rd party)
 - internal TS files
 - html and sass files (from Component Metadata)
-  */
-async function getTSFileDependencies(file: BazelinFile) {
-  return null;
+*/
+async function getTSFileDependencies(file: BazelinFile, _args: Args) {
+  const AST: SourceFile = ts.createSourceFile(file.path, readFileSync(file.path).toString(), ts.ScriptTarget.Latest, true);
+  const projectDependencies: ProjectDependencies = await readProjectDependencies(_args.rootDir);
+  const depsFiles: TsFilesDeps = {
+    filePath: file.path,
+    external: new Set(),
+    internal: new Set(),
+    html: new Set(),
+    styles: new Set()
+  };
+
+  AST.statements.forEach((statement: any) => {
+    switch (statement.kind) {
+      case (SyntaxKind.ImportDeclaration):
+        projectDependencies.internal.forEach((alias: string) => {
+          if (statement.moduleSpecifier.text.startsWith(alias)) {
+            depsFiles.internal.add(statement.moduleSpecifier.text);
+            return;
+          }
+        });
+
+        if (statement.moduleSpecifier.text.startsWith('@')) {
+          depsFiles.external.add(statement.moduleSpecifier.text);
+          return;
+        }
+
+        depsFiles.internal.add(statement.moduleSpecifier.text);
+        break;
+      case (SyntaxKind.ClassDeclaration):
+        statement.decorators.forEach((decorator: any) => {
+          /* I assume that we have only one argument in decorator */
+          decorator.expression.arguments[0].properties.forEach((property: any) => {
+            if (property.name.text === 'templateUrl') {
+              depsFiles.html.add(property.initializer.text);
+            }
+
+            if (property.name.text === 'styleUrls') {
+              depsFiles.styles.add(property.initializer.elements[0].text);
+            }
+            /* I didn't add case with inline styles: `styles: ['h1 {color: black}']`
+             * Can't figure out what to do with this case */
+          });
+        });
+        break;
+    }
+  });
+
+  console.log('depsFiles', depsFiles);
+  return depsFiles;
 }
 
 /*EXTRACT FUNC START*/
@@ -128,7 +191,7 @@ async function readFilesDependencies(workspace: Workspace) {
     }
 
     if (/\.ts/.test(file.name)) {
-      const tsFileDependecies = await getTSFileDependencies(file);
+      const tsFileDependecies = await getTSFileDependencies(file, args);
     }
   }
 }
@@ -144,7 +207,7 @@ async function readFilesDependencies(workspace: Workspace) {
 5. Generate bazel build files
 6. Hope for blind luck :D
 */
-async function main(_args: { srcPath: string, rootDir: string }) {
+async function main(_args: Args) {
   const dependencies = await readProjectDependencies(_args.rootDir);
   const srcFolder = {
     path: _args.srcPath,

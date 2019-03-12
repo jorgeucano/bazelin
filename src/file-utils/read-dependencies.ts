@@ -1,12 +1,12 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { readJson } from 'fs-extra';
-import {readConfigFile} from 'typescript';
+import { readConfigFile } from 'typescript';
 // todo: accept names as parameters
 const TSCONFIG = 'tsconfig.json';
 const PACKAGEJSON = 'package.json';
 
-export interface ProjectDependecies {
+export interface ProjectDependencies {
   internal: string[];
   external: string[];
 }
@@ -32,7 +32,7 @@ async function _readPackageDependecies(filePath: string): Promise<string[]> {
   }
 }
 
-export async function readProjectDependencies(dir: string): Promise<ProjectDependecies> {
+export async function readProjectDependencies(dir: string): Promise<ProjectDependencies> {
   const internal = await _readTSConfigPaths(join(dir, TSCONFIG));
   const external = await _readPackageDependecies(join(dir, PACKAGEJSON));
 
