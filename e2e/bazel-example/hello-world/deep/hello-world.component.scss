@@ -1,4 +1,7 @@
-@import "src/styles/shared";
+@import "../../styles/shared";
+@import "../../../../node_modules/@ionic/angular/css/core.css";
+@import "~@ionic/angular/css/display.css";
+
 
 .mood-icon {
   margin: 1rem;

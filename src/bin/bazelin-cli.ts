@@ -72,17 +72,15 @@ export interface SassFilesDeps {
 /* should return a list of internal and external dependencies
  * from given file to other sass files and assets (like fonts) */
 async function getSassFilesDependencies(file: BazelinFile) {
-
   const fileDeps = await readFile(file.path, 'utf8');
-  const parsed = gonzales.parse(fileDeps, {syntax: 'scss'});
-
+  const parsed = gonzales.parse(fileDeps, { syntax: 'scss' });
   const depsFiles: SassFilesDeps = {
     filePath: file.path,
     external: new Set(),
     internal: new Set()
   };
 
-  parsed.forEach('atrule', (node: any, index: number) => {
+  parsed.forEach('atrule', async (node: any, index: number) => {
     const atkeyword = node.first('atkeyword').first('ident');
 
     if (atkeyword.content !== 'import') {
@@ -93,16 +91,22 @@ async function getSassFilesDependencies(file: BazelinFile) {
     const importString = importNode.content;
 
     if (importString[1] === '~') {
-      const _importString = importString.substr(2, importString.length - 1);
-      importNode.content = [importString[0], _importString, importString[importString.length]].join('');
-
-      depsFiles.external.add(importNode.content);
-    } else {
-      depsFiles.internal.add(importNode.content);
+      const _importString = importString.substr(2, importString.length - 3);
+      depsFiles.external.add(_importString);
+      return;
     }
+
+    const nodeModules = 'node_modules/';
+    if (importString.indexOf(nodeModules) !== -1) {
+      const offset = importString.indexOf(nodeModules) + nodeModules.length;
+      const _importString = importString.substr(offset, importString.length - offset - 1)
+      depsFiles.external.add(_importString);
+      return;
+    }
+
+    const _internalImportString = importString.substr(2, importString.length - 3);
+    depsFiles.internal.add(_internalImportString);
   });
-  console.log(depsFiles);
-  return null;
 }
 
 /* should return a list of dependencies from give file to:
@@ -118,7 +122,7 @@ async function getTSFileDependencies(file: BazelinFile) {
 const _isSassFile = /\.(sass|scss)$/;
 
 async function readFilesDependencies(workspace: Workspace) {
-  await workspace.filePathToFileMap.forEach(async (file, filePath) => {
+  for (const [, file] of workspace.filePathToFileMap) {
     if (_isSassFile.test(file.name)) {
       const sassFilesDependecies = await getSassFilesDependencies(file);
     }
@@ -126,8 +130,7 @@ async function readFilesDependencies(workspace: Workspace) {
     if (/\.ts/.test(file.name)) {
       const tsFileDependecies = await getTSFileDependencies(file);
     }
-    // console.log(filePath); // TODO return to uncomment
-  });
+  }
 }
 
 /*EXTRACT FUNC END*/
@@ -142,7 +145,6 @@ async function readFilesDependencies(workspace: Workspace) {
 6. Hope for blind luck :D
 */
 async function main(_args: { srcPath: string, rootDir: string }) {
-
   const dependencies = await readProjectDependencies(_args.rootDir);
   const srcFolder = {
     path: _args.srcPath,
