@@ -115,7 +115,7 @@ async function getSassFilesDependencies(file: BazelinFile) {
     const nodeModules = 'node_modules/';
     if (importString.indexOf(nodeModules) !== -1) {
       const offset = importString.indexOf(nodeModules) + nodeModules.length;
-      const _importString = importString.substr(offset, importString.length - offset - 1)
+      const _importString = importString.substr(offset, importString.length - offset - 1);
       depsFiles.external.add(_importString);
       return;
     }
@@ -160,7 +160,6 @@ async function getTSFileDependencies(file: BazelinFile, _args: Args) {
         break;
       case (SyntaxKind.ClassDeclaration):
         statement.decorators.forEach((decorator: any) => {
-          /* I assume that we have only one argument in decorator */
           decorator.expression.arguments[0].properties.forEach((property: any) => {
             if (property.name.text === 'templateUrl') {
               depsFiles.html.add(property.initializer.text);
@@ -169,8 +168,6 @@ async function getTSFileDependencies(file: BazelinFile, _args: Args) {
             if (property.name.text === 'styleUrls') {
               depsFiles.styles.add(property.initializer.elements[0].text);
             }
-            /* I didn't add case with inline styles: `styles: ['h1 {color: black}']`
-             * Can't figure out what to do with this case */
           });
         });
         break;
