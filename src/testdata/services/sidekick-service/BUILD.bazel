@@ -1,0 +1,13 @@
+load("@build_bazel_rules_typescript//:defs.bzl", "ts_library")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_library(
+    name = "sidekick-service",
+    srcs = ["sidekick.service.ts"],
+    deps = [
+        "@angular//packages/common/http",
+        "@angular//packages/core",
+        "@npm//@types",
+    ],
+)

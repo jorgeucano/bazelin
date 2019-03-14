@@ -1,0 +1,28 @@
+load("@build_bazel_rules_typescript//:defs.bzl", "ts_library")
+
+package(default_visibility = ["//visibility:public"])
+
+ts_library(
+    name = "user-list-model",
+    srcs = ["user-list.model.ts"],
+    deps = [
+        "//src/testdata/library-deps/user-model",
+        "@npm//@types",
+    ],
+)
+
+ts_library(
+    name = "user-model",
+    srcs = ["user.model.ts"],
+    deps = [
+        "@npm//@types",
+    ],
+)
+
+ts_library(
+    name = "library-deps",
+    srcs = ["*.ts"],
+    deps = [
+        "@npm//@types",
+    ],
+)
