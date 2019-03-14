@@ -1,4 +1,4 @@
-import { BazelRule } from '../rules-sass/sass-library';
+import { BazelRule } from '../bazel-rule.model';
 
 export class RollupBundleRule implements BazelRule {
   ruleName = 'rollup_bundle';

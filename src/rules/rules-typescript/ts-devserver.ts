@@ -1,4 +1,4 @@
-import { BazelRule } from '../rules-sass/sass-library';
+import { BazelRule } from '../bazel-rule.model';
 
 export class TsDevserverRule implements BazelRule {
   ruleName = 'ts_devserver';

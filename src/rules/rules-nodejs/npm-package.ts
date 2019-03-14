@@ -1,4 +1,4 @@
-import { BazelRule } from '../rules-sass/sass-library';
+import { BazelRule } from '../bazel-rule.model';
 
 export class NpmPackageRule implements BazelRule {
   ruleName = 'npm_package';
