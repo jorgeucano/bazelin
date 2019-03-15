@@ -1,0 +1,23 @@
+load("@angular//:index.bzl", "ng_module")
+load("@build_bazel_rules_nodejs//:defs.bzl", "rollup_bundle")
+load("@build_bazel_rules_typescript//:defs.bzl", "ts_devserver")
+
+package(default_visibility = ["//visibility:public"])
+
+ng_module(
+    name = "component2",
+    srcs = glob(["*.ts"],
+        exclude=["*.spec.ts"]),
+    assets = [
+        "//src/testdata/application-lazy-loading/styles:main",
+    ],
+    tsconfig = "//:tsconfig.json",
+    deps = [
+        "@angular//packages/core",
+        "@angular//packages/platform-browser",
+        "@angular//packages/platform-browser/animations",
+        "@angular//packages/router",
+        "@npm//tslib",
+        "@npm//@types",
+    ],
+)
