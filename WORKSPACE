@@ -21,18 +21,11 @@ http_archive(
 load("@io_bazel_rules_sass//:package.bzl", "rules_sass_dependencies")
 rules_sass_dependencies()
 
-# Setup repositories which are needed for the Sass rules.
-load("@io_bazel_rules_sass//:defs.bzl", "sass_repositories")
-sass_repositories()
-
 # Setup the NodeJS toolchain
-load("@build_bazel_rules_nodejs//:defs.bzl", "node_repositories", "check_bazel_version")
+load("@build_bazel_rules_nodejs//:defs.bzl", "node_repositories", "check_bazel_version",  "npm_install", "yarn_install")
 check_bazel_version("0.22.0");
 node_repositories()
 
-# should be loaded before npm instrall if @bazel/typescript is in package.json
-
-load("@build_bazel_rules_nodejs//:defs.bzl", "npm_install", "yarn_install")
 npm_install(
     name = "npm",
     package_json = "//:package.json",
@@ -48,5 +41,10 @@ npm_install(
 load("@npm//:install_bazel_dependencies.bzl", "install_bazel_dependencies")
 install_bazel_dependencies()
 
-load("@npm_bazel_typescript//:defs.bzl", "ts_setup_workspace")
+# Setup repositories which are needed for the Sass rules.
+load("@io_bazel_rules_sass//:defs.bzl", "sass_repositories")
+sass_repositories()
+
+# Setup TypeScript toolchain
+load("@npm_bazel_typescript//:index.bzl", "ts_setup_workspace")
 ts_setup_workspace()

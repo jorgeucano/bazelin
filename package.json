@@ -34,6 +34,7 @@
     "@bazel/bazel": "0.23.2",
     "@bazel/buildifier": "0.22.0",
     "@bazel/ibazel": "0.9.1",
+    "@bazel/typescript": "0.27.4",
     "@ionic/angular": "4.1.1",
     "@ngrx/store": "7.3.0",
     "@types/fs-extra": "5.0.5",
@@ -54,6 +55,7 @@
     "protractor": "~5.4.0",
     "rxjs": "~6.3.3",
     "ts-node": "~7.0.0",
+    "tsickle": "0.34.3",
     "tslib": "^1.9.0",
     "tslint": "~5.11.0",
     "zone.js": "~0.8.26"
