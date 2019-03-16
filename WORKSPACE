@@ -25,7 +25,7 @@ rules_sass_dependencies()
 load("@build_bazel_rules_nodejs//:defs.bzl", "node_repositories", "check_bazel_version",  "npm_install", "yarn_install")
 check_bazel_version("0.22.0");
 node_repositories()
-
+#
 npm_install(
     name = "npm",
     package_json = "//:package.json",
