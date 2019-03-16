@@ -1,8 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@npm_bazel_karma//:index.bzl", "ts_web_test_suite")
+load("@npm_angular_bazel//:index.bzl", "ng_module")
 load("@build_bazel_rules_nodejs//:defs.bzl", "rollup_bundle", "history_server")
-load("@build_bazel_rules_nodejs//internal/web_package:web_package.bzl", "web_package")
 load("@npm_bazel_typescript//:index.bzl", "ts_devserver", "ts_library")
 load("@io_bazel_rules_sass//:defs.bzl", "multi_sass_binary")
 
@@ -29,7 +28,18 @@ ng_module(
     deps = [
         "@npm//@angular/core",
         "@npm//@angular/platform-browser",
+        "@npm//@angular/router",
         "@npm//@types",
+        "@npm//rxjs",
+    ],
+)
+
+rollup_bundle(
+    name = "bundle",
+    entry_point = "src/testdata/ng-module/main.prod",
+    deps = [
+        "//src/testdata/ng-module:src",
+        "@npm//@angular/router",
         "@npm//rxjs",
     ],
 )

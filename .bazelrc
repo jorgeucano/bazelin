@@ -10,7 +10,7 @@ build --strategy=AngularTemplateCompile=worker
 #
 # Instead, you should run> `bazel info bazel-bin` to find out where the outputs went.
 #build --symlink_prefix=dist/ --verbose_failures
-build --verbose_failures
+build --verbose_failures  --sandbox_debug
 
 test --test_output=errors
 

@@ -29,9 +29,18 @@ ng_module(
     ]) + ([":styles"] if len(glob(["**/*.scss"])) else []),
     deps = [
         "@npm//@angular/core",
+        "@npm//@angular/router",
         "@npm//@angular/platform-browser",
         "@npm//@types",
+        "@npm//rxjs"
+    ],
+)
+
+rollup_bundle(
+    name = "bundle",
+    entry_point = "src/testdata/ng-module-with-browser/main.prod",
+    deps = [
+        "//src/testdata/ng-module-with-browser:src",
         "@npm//rxjs",
-        "@npm//typescript"
     ],
 )

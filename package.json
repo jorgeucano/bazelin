@@ -36,6 +36,7 @@
     "@bazel/bazel": "0.23.2",
     "@bazel/buildifier": "0.22.0",
     "@bazel/ibazel": "^0.9.1",
+    "@bazel/jasmine": "0.27.5",
     "@bazel/karma": "0.27.5",
     "@bazel/typescript": "0.27.5",
     "@ionic/angular": "4.1.1",

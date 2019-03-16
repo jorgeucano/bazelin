@@ -6,18 +6,40 @@ load("@npm_bazel_typescript//:index.bzl", "ts_devserver", "ts_library")
 
 ng_module(
     name = "application",
-    srcs = ["main.ts"],
+     srcs = glob(
+            include = ["**/*.ts"],
+            exclude = [
+                "**/*.spec.ts",
+                "main.ts",
+                "test.ts",
+                "initialize_testbed.ts",
+            ],
+        ),
     assets = [
         "//src/testdata/ng-app-non-lazy/styles:main",
     ],
     deps = [
+        "//src/testdata/ng-app-non-lazy/app:app-component",
         "@npm//@angular/core",
         "@npm//@angular/platform-browser",
         "@npm//@angular/animations",
         "@npm//@angular/platform-browser-dynamic",
         "@npm//@angular/router",
         "@npm//@types",
-        "//src/testdata/ng-app-non-lazy/app:app-component"
+    ],
+)
+
+######################################
+# ng serve
+######################################
+
+rollup_bundle(
+    name = "bundle",
+    entry_point = "src/testdata/ng-app-non-lazy/main.prod",
+    deps = [
+        "//src/testdata/ng-app-non-lazy:application",
+        "@npm//@angular/router",
+        "@npm//rxjs",
     ],
 )
 
