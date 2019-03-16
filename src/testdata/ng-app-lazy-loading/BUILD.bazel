@@ -1,0 +1,50 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@npm_angular_bazel//:index.bzl", "ng_module")
+load("@npm_bazel_typescript//:index.bzl", "ts_devserver", "ts_library")
+
+ng_module(
+    name = "ng-app-lazy-loading",
+    srcs = ["main.ts"],
+    assets = [
+        "//src/testdata/ng-app-lazy-loading/styles:main",
+    ],
+    deps = [
+        "@npm//@angular/core",
+        "@npm//@angular/platform-browser",
+        "@npm//@angular/platform-browser-dynamic",
+        "@npm//@angular/animations",
+        "@npm//@angular/router",
+        "@npm//@types",
+        "//src/testdata/ng-app-lazy-loading/app:app-component"
+    ],
+)
+
+# We always strip these paths off the front of any assets we serve
+_ROOT_DIRS = [
+    "npm/node_modules/zone.js/dist",
+#    "npm/node_modules/@angular/material/prebuilt-themes",
+    "npm/node_modules/@ngrx/store/bundles",
+]
+
+ts_devserver(
+    name = "devserver",
+    port = 9898,
+    additional_root_paths = [
+        "npm/node_modules/zone.js/dist",
+        "npm/node_modules/tslib",
+    ],
+    entry_module = "bazelin/src/testdata/ng-app-lazy-loading/main",
+    serving_path = "/bundle.min.js",
+    scripts = [
+#            ":require.config.js",
+#            ":module-id.js",
+            "@npm//node_modules/tslib:tslib.js",
+    ],
+    static_files = [
+        "@npm//node_modules/zone.js:dist/zone.min.js",
+        "@npm//node_modules/tslib:tslib.js",
+        "index.html",
+    ],
+    deps = [":ng-app-lazy-loading"],
+)

@@ -25,3 +25,5 @@ bazel build //src/testdata/ng-module-with-browser:src
 #3. module with routing (no-lazy loading)
 bazel build //src/testdata/ng-app-non-lazy:devserver
 #4. module with routing (with lazy-loading)
+bazel build //src/testdata/ng-app-lazy-loading:devserver
+

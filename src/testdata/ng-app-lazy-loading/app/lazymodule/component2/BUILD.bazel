@@ -1,0 +1,18 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@npm_angular_bazel//:index.bzl", "ng_module")
+
+ng_module(
+    name = "component2",
+    srcs = glob(["*.ts"],
+        exclude=["*.spec.ts"]),
+    assets = [
+        "//src/testdata/ng-app-lazy-loading/styles:main",
+    ],
+    deps = [
+        "@npm//@angular/core",
+        "@npm//@angular/platform-browser",
+        "@npm//@angular/router",
+        "@npm//@types",
+    ],
+)
