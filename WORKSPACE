@@ -41,10 +41,17 @@ npm_install(
 load("@npm//:install_bazel_dependencies.bzl", "install_bazel_dependencies")
 install_bazel_dependencies()
 
-# Setup repositories which are needed for the Sass rules.
-load("@io_bazel_rules_sass//:defs.bzl", "sass_repositories")
-sass_repositories()
+load("@npm_bazel_karma//:package.bzl", "rules_karma_dependencies")
+rules_karma_dependencies()
 
-# Setup TypeScript toolchain
+load("@io_bazel_rules_webtesting//web:repositories.bzl", "web_test_repositories")
+web_test_repositories()
+
+load("@npm_bazel_karma//:browser_repositories.bzl", "browser_repositories")
+browser_repositories()
+
 load("@npm_bazel_typescript//:index.bzl", "ts_setup_workspace")
 ts_setup_workspace()
+
+load("@io_bazel_rules_sass//sass:sass_repositories.bzl", "sass_repositories")
+sass_repositories()
