@@ -20,7 +20,7 @@ bazel build //src/testdata/ts-services:main-service
 bazel build //src/testdata/ng-module:src
 # add samples
 #1. ng_module with @angular module import
-#  bazel build -s //src/testdata/ng-module-with-browser:src
+bazel build //src/testdata/ng-module-with-browser:src
 #2. ng_module with import from ngx-bs
 #3. module with routing (no-lazy loading)
 #4. module with routing (with lazy-loading)

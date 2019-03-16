@@ -5,6 +5,7 @@
     "fix-sass-imports": "./dist/bin/fix-sass-imports-cli.js"
   },
   "scripts": {
+    "postinstall": "ngc -p ./angular-metadata.tsconfig.json",
     "build": "tsc -p tsconfig.json",
     "try-cli": "node ./dist/bazelin-cli.js"
   },
@@ -31,6 +32,7 @@
     "@angular/platform-browser": "~7.2.0",
     "@angular/platform-browser-dynamic": "~7.2.0",
     "@angular/router": "~7.2.0",
+    "@angular/upgrade": "7.2.9",
     "@bazel/bazel": "0.23.2",
     "@bazel/buildifier": "0.22.0",
     "@bazel/ibazel": "^0.9.1",

@@ -29,6 +29,7 @@ node_repositories()
 npm_install(
     name = "npm",
     package_json = "//:package.json",
+    data = ["//:angular-metadata.tsconfig.json"],
     package_lock_json = "//:package-lock.json"
 )
 
