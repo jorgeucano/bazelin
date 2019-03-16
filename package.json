@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "~0.13.0",
-    "@angular/animations": "~7.2.0",
+    "@angular/animations": "7.2.9",
     "@angular/bazel": "7.2.9",
     "@angular/cdk": "7.3.4",
     "@angular/cli": "~7.3.4",

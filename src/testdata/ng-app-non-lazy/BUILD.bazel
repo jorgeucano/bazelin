@@ -8,26 +8,22 @@ ng_module(
     name = "application",
     srcs = ["main.ts"],
     assets = [
-        "//src/testdata/application-non-lazy/styles:main",
+        "//src/testdata/ng-app-non-lazy/styles:main",
     ],
-#    tsconfig = "//src/testdata/application:tsconfig.json",
-    tsconfig = "//:tsconfig.json",
     deps = [
-        "@angular//packages/core",
-        "@angular//packages/platform-browser",
-        "@angular//packages/platform-browser/animations",
-        "@angular//packages/platform-browser-dynamic",
-        "@angular//packages/router",
-        "@npm//tslib",
+        "@npm//@angular/core",
+        "@npm//@angular/platform-browser",
+        "@npm//@angular/animations",
+        "@npm//@angular/platform-browser-dynamic",
+        "@npm//@angular/router",
         "@npm//@types",
-        "//src/testdata/application-non-lazy/app:app-component"
+        "//src/testdata/ng-app-non-lazy/app:app-component"
     ],
 )
 
 # We always strip these paths off the front of any assets we serve
 _ROOT_DIRS = [
     "npm/node_modules/zone.js/dist",
-#    "npm/node_modules/@angular/material/prebuilt-themes",
     "npm/node_modules/@ngrx/store/bundles",
 ]
 
@@ -38,11 +34,11 @@ ts_devserver(
         "npm/node_modules/zone.js/dist",
         "npm/node_modules/tslib",
     ],
-    entry_module = "bazelin/src/testdata/application-non-lazy/main",
+    entry_module = "bazelin/src/testdata/ng-app-non-lazy/main",
     serving_path = "/bundle.min.js",
     scripts = [
-            ":require.config.js",
-            ":module-id.js",
+#            ":require.config.js",
+#            ":module-id.js",
             "@npm//node_modules/tslib:tslib.js",
     ],
     static_files = [
