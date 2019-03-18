@@ -1,6 +1,10 @@
 /* tslint:disable:variable-name */
+import { basename, dirname, relative } from 'path';
+import { BazelinFile, BazelinWorkspace } from '../../types';
 import { BazelRule } from '../bazel-rule.model';
 
+
+/* converts to css and consumed by ng */
 export class SassBinaryRule implements BazelRule {
   ruleName = 'sass_binary';
   load = new Map([['@io_bazel_rules_sass//:defs.bzl', this.ruleName]]);
@@ -17,22 +21,62 @@ export class SassBinaryRule implements BazelRule {
   // Whether to generate sourcemaps for the generated CSS. Defaults to True. First letter should be in Uppercase
   sourcemap: boolean | undefined;
 
+  constructor(obj: SassBinaryRule) {
+    Object.assign(this, obj);
+  }
+
+  static createFromFile(file: BazelinFile, workspace: BazelinWorkspace): SassBinaryRule {
+    const fileName = basename(file.path);
+    // todo: convert internal/external deps
+    const deps: string[] = [];
+
+    function isSameFolder(path1: string, path2: string): boolean {
+      return dirname(path1) === dirname(path2);
+    }
+
+    // todo: or save consumable name in BazelinFile?
+    function fileNameToRule(pathToFile: string): string {
+      return basename(pathToFile).replace('.', '_');
+    }
+
+    if (file.deps) {
+      for (const pathToDep of file.deps.internal) {
+        if (isSameFolder(pathToDep, file.path)) {
+          deps.push(`:${fileNameToRule(pathToDep)}`);
+          continue;
+        }
+        deps.push(`//${relative(workspace.srcPath, dirname(pathToDep))}:${fileNameToRule(pathToDep)}`);
+      }
+    }
+    const _obj = new SassBinaryRule({
+      name: basename(file.path).replace('.', '_'),
+      // convert abs path to bazel path to dependency
+      // so "/usr/vasya/project/assets/_some.sass
+      // -> "//assets:_some
+      // where "/usr/vasya/project/WORKSPACE"
+      // src =
+      src: fileName,
+      deps
+    } as any);
+    return _obj;
+  }
+
   generate(): string {
-    return [
-      `sass_binary(`,
-        `name = "${ this.name }",`,
-        `src = "${ this.src }",`,
-        !this.deps.length ? '' :
-          `deps = [`,
-            this.deps.map(dep => `"${ dep }"`).join(','),
-          `],`,
-        !this.include_paths.length ? '' :
-          `include_paths = [`,
-            this.include_paths.map(path => `"${ path }"`).join(','),
-          `],`,
-        !this.output_style ? '' : `output_style = "${ this.output_style }",`,
-        !this.sourcemap ? '' : `sourcemap = "${ this.sourcemap }",`,
-      `)`
-    ].join('\n');
+    const _result = [
+      `sass_binary(
+  name = "${this.name}",
+  src = "${this.src}",`];
+    if (this.deps.length) {
+      const _deps = this.deps.map(dep => `"${dep}"`).join(',');
+      _result.push(`  deps = [${_deps}],`);
+    }
+    if (this.include_paths.length) {
+      const _includePaths = this.include_paths.map(path => `"${path}"`).join(',');
+      _result.push(`  include_paths = [${_includePaths}]`);
+    }
+    // !this.output_style ? '' : `output_style = "${this.output_style}",`,
+    //   !this.sourcemap ? '' : `sourcemap = "${this.sourcemap}",`,
+    _result.push(`)`);
+    return _result.join('\n');
   }
 }

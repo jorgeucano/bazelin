@@ -21,170 +21,42 @@ Sorting internal vs external imports
 3. TODO: create isLocalImport or is 3rd party import check
 */
 
-import { args } from '../args-parser';
-import { ProjectDependencies, readProjectDependencies } from '../file-utils/read-dependencies';
+import { args, CliArgs } from '../args-parser';
+import { readProjectDependencies } from '../file-utils/read-dependencies';
 import { readWorkSpace } from '../file-utils/read-workspace';
-import { readFileSync } from 'fs';
-import * as ts from 'typescript';
-import { SyntaxKind, SourceFile } from 'typescript';
-import { readFile } from 'fs-extra';
+import { getSassFilesDependencies } from '../lib/sass-processor';
+import { getTSFileDependencies } from '../lib/ts-processor';
+import { SassBinaryRule } from '../rules/rules-sass/sass-binary';
+import { SassLibraryRule } from '../rules/rules-sass/sass-library';
+import { BazelinFile, BazelinFolder, BazelinWorkspace } from '../types';
 
-const gonzales = require('gonzales-pe');
 
 /* EXTRACT START  */
-export interface BazelinFile {
-  /* file name with extension */
-  name: string;
-  /* absolute file path */
-  path: string;
 
-  /* pointer to folder in which file is */
-  folder: BazelinFolder;
-}
+export function generateSassRule(file: BazelinFile) {
 
-export interface BazelinFolder {
-  /* relative path to folder */
-  path: string;
-  /* folders in this folder */
-  folders: Set<BazelinFolder>;
-  /* files in this folder */
-  files: Set<BazelinFile>;
-}
-
-export interface Workspace {
-  /* absolute path to workspace root folder */
-  rootDir: string;
-  /* relative path to src folder where bazel config should be bootstrapped */
-  srcPath: string;
-  srcFolder: BazelinFolder;
-
-  /* pointers to all files */
-  filePathToFileMap: Map<string, BazelinFile>;
-  /* pointers to all folders */
-  folderPathToFolderMap: Map<string, BazelinFolder>;
-}
-
-export interface SassFilesDeps {
-  filePath: string;
-  external: Set<string>;
-  internal: Set<string>;
-}
-
-export interface TsFilesDeps {
-  filePath: string;
-  external: Set<string>;
-  internal: Set<string>;
-  html: Set<string>;
-  styles: Set<string>;
-}
-
-export interface Args {
-  srcPath: string;
-  rootDir: string;
 }
 
 /* EXTRACT END */
 
-/* should return a list of internal and external dependencies
- * from given file to other sass files and assets (like fonts) */
-async function getSassFilesDependencies(file: BazelinFile) {
-  const fileDeps = await readFile(file.path, 'utf8');
-  const parsed = gonzales.parse(fileDeps, { syntax: 'scss' });
-  const depsFiles: SassFilesDeps = {
-    filePath: file.path,
-    external: new Set(),
-    internal: new Set()
-  };
-
-  parsed.forEach('atrule', async (node: any, index: number) => {
-    const atkeyword = node.first('atkeyword').first('ident');
-
-    if (atkeyword.content !== 'import') {
-      return;
-    }
-
-    const importNode = node.first('string');
-    const importString = importNode.content;
-
-    if (importString[1] === '~') {
-      const _importString = importString.substr(2, importString.length - 3);
-      depsFiles.external.add(_importString);
-      return;
-    }
-
-    const nodeModules = 'node_modules/';
-    if (importString.indexOf(nodeModules) !== -1) {
-      const offset = importString.indexOf(nodeModules) + nodeModules.length;
-      const _importString = importString.substr(offset, importString.length - offset - 1);
-      depsFiles.external.add(_importString);
-      return;
-    }
-
-    const _internalImportString = importString.substr(2, importString.length - 3);
-    depsFiles.internal.add(_internalImportString);
-  });
-}
-
-/* should return a list of dependencies from give file to:
-- external modules (3rd party)
-- internal TS files
-- html and sass files (from Component Metadata)
-*/
-async function getTSFileDependencies(file: BazelinFile, _args: Args) {
-  const AST: SourceFile = ts.createSourceFile(file.path, readFileSync(file.path).toString(), ts.ScriptTarget.Latest, true);
-  const projectDependencies: ProjectDependencies = await readProjectDependencies(_args.rootDir);
-  const depsFiles: TsFilesDeps = {
-    filePath: file.path,
-    external: new Set(),
-    internal: new Set(),
-    html: new Set(),
-    styles: new Set()
-  };
-
-  AST.statements.forEach((statement: any) => {
-    switch (statement.kind) {
-      case (SyntaxKind.ImportDeclaration):
-        projectDependencies.internal.forEach((alias: string) => {
-          if (statement.moduleSpecifier.text.startsWith(alias)) {
-            depsFiles.internal.add(statement.moduleSpecifier.text);
-            return;
-          }
-        });
-
-        if (statement.moduleSpecifier.text.startsWith('@')) {
-          depsFiles.external.add(statement.moduleSpecifier.text);
-          return;
-        }
-
-        depsFiles.internal.add(statement.moduleSpecifier.text);
-        break;
-      case (SyntaxKind.ClassDeclaration):
-        statement.decorators.forEach((decorator: any) => {
-          decorator.expression.arguments[0].properties.forEach((property: any) => {
-            if (property.name.text === 'templateUrl') {
-              depsFiles.html.add(property.initializer.text);
-            }
-
-            if (property.name.text === 'styleUrls') {
-              depsFiles.styles.add(property.initializer.elements[0].text);
-            }
-          });
-        });
-        break;
-    }
-  });
-
-  console.log('depsFiles', depsFiles);
-  return depsFiles;
-}
 
 /*EXTRACT FUNC START*/
 const _isSassFile = /\.(sass|scss)$/;
 
-async function readFilesDependencies(workspace: Workspace) {
+
+async function attachFileDependencies(workspace: BazelinWorkspace) {
   for (const [, file] of workspace.filePathToFileMap) {
     if (_isSassFile.test(file.name)) {
-      const sassFilesDependecies = await getSassFilesDependencies(file);
+      file.deps = await getSassFilesDependencies(file);
+      if (file.deps) {
+        for (const dep of file.deps.internal) {
+          const _target = workspace.filePathToFileMap.get(dep);
+          if (!_target) {
+            continue;
+          }
+          _target.requiredBy.add(file);
+        }
+      }
     }
 
     if (/\.ts/.test(file.name)) {
@@ -193,8 +65,48 @@ async function readFilesDependencies(workspace: Workspace) {
   }
 }
 
-/*EXTRACT FUNC END*/
+function processRootFolder(workspace: BazelinWorkspace) {
+  const entryPoints = Array.from(workspace.srcFolder.files)
+    .filter((file: BazelinFile) => file.requiredBy.size === 0);
 
+  entryPoints.forEach((entryPoint: BazelinFile) => {
+    processFile(entryPoint, workspace);
+  });
+  console.log(workspace.srcFolder.rulesString.join('\n'));
+}
+
+
+function processFile(file: BazelinFile, workspace: BazelinWorkspace) {
+  // process all dependencies before processing file
+  if (file.deps) {
+    // process interal dependencies
+    for (const dep of file.deps.internal) {
+      const _depFile = workspace.filePathToFileMap.get(dep);
+      if (_depFile && !_depFile.isProcessed) {
+        processFile(_depFile, workspace);
+      }
+    }
+    // todo: process external dependencies
+  }
+
+  if (_isSassFile.test(file.name)) {
+    if (file.deps && file.deps.internal.size === 0) {
+      const _rule = SassLibraryRule.createFromFile(file, workspace);
+      file.folder.rules.add(_rule);
+      file.folder.rulesString.push(_rule.generate());
+    }
+
+    if (file.requiredBy.size === 0) {
+      const _rule = SassBinaryRule.createFromFile(file, workspace);
+      file.folder.rules.add(_rule);
+      file.folder.rulesString.push(_rule.generate());
+    }
+  }
+
+  file.isProcessed = true;
+}
+
+/*EXTRACT FUNC END*/
 
 /*
 1. Read workspace structure
@@ -204,12 +116,14 @@ async function readFilesDependencies(workspace: Workspace) {
 5. Generate bazel build files
 6. Hope for blind luck :D
 */
-async function main(_args: Args) {
+async function main(_args: CliArgs) {
   const dependencies = await readProjectDependencies(_args.rootDir);
-  const srcFolder = {
+  const srcFolder: BazelinFolder = {
     path: _args.srcPath,
     files: new Set(),
-    folders: new Set()
+    folders: new Set(),
+    rules: new Set(),
+    rulesString: []
   };
   const workspace = await readWorkSpace({
     ..._args,
@@ -218,8 +132,9 @@ async function main(_args: Args) {
     folderPathToFolderMap: new Map([[_args.srcPath, srcFolder]])
   });
 
-  await readFilesDependencies(workspace);
+  await attachFileDependencies(workspace);
 
+  processRootFolder(workspace);
   console.log('done');
 }
 

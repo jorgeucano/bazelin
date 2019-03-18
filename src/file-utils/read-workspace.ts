@@ -1,14 +1,15 @@
 import { readdir, stat } from 'fs-extra';
 import { join } from 'path';
-import { BazelinFile, BazelinFolder, Workspace } from '../bin/bazelin-cli';
+import { BazelRule } from '../rules/bazel-rule.model';
+import { BazelinFile, BazelinFolder, BazelinWorkspace } from '../types';
 
-export async function readWorkSpace(workspace: Workspace): Promise<Workspace> {
-  workspace.srcFolder =  await readFolder(workspace, workspace.srcFolder);
+export async function readWorkSpace(workspace: BazelinWorkspace): Promise<BazelinWorkspace> {
+  workspace.srcFolder = await readFolder(workspace, workspace.srcFolder);
 
   return workspace;
 }
 
-async function readFolder(workspace: Workspace, dir: BazelinFolder): Promise<BazelinFolder> {
+async function readFolder(workspace: BazelinWorkspace, dir: BazelinFolder): Promise<BazelinFolder> {
   const absDirPath = join(workspace.rootDir, dir.path);
   const nodes = await readdir(absDirPath);
   while (nodes.length) {
@@ -22,7 +23,9 @@ async function readFolder(workspace: Workspace, dir: BazelinFolder): Promise<Baz
       const _newDirectory: BazelinFolder = await readFolder(workspace, {
         path: join(dir.path, node),
         folders: new Set(),
-        files: new Set()
+        files: new Set(),
+        rules: new Set<BazelRule>(),
+        rulesString: []
       });
 
       dir.folders.add(_newDirectory);
@@ -31,7 +34,9 @@ async function readFolder(workspace: Workspace, dir: BazelinFolder): Promise<Baz
       const _fileObj: BazelinFile = {
         name: node,
         path: _newPath,
-        folder: dir
+        folder: dir,
+        requiredBy: new Set<BazelinFile>(),
+        isProcessed: false
       };
       dir.files.add(_fileObj);
       workspace.filePathToFileMap.set(_fileObj.path, _fileObj);

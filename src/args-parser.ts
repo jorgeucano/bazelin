@@ -1,5 +1,10 @@
 const yargs = require('yargs');
 
+export interface CliArgs {
+  srcPath: string;
+  rootDir: string;
+}
+
 const _args = yargs
   .scriptName('dist/index.js')
   .usage('$0 [args] {path}')
@@ -18,6 +23,6 @@ if (srcPath === null) {
 // todo: should it be configurable later on?
 const rootDir = process.cwd();
 
-export const args = {srcPath, rootDir};
+export const args: CliArgs = { srcPath, rootDir };
 
 // console.log(`Processing "${args.in}" input, results will be in "${args.out}"`);
