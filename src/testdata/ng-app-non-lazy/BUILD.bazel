@@ -51,13 +51,14 @@ _ROOT_DIRS = [
 
 ts_devserver(
     name = "devserver",
-    port = 9898,
+    port = 4200,
     additional_root_paths = [
         "npm/node_modules/zone.js/dist",
         "npm/node_modules/tslib",
     ],
-    entry_module = "bazelin/src/testdata/ng-app-non-lazy/main",
+    entry_module = "bazelin/src/testdata/ng-app-non-lazy/main.prod",
     serving_path = "/bundle.min.js",
+    index_html = "index.html",
     scripts = [
 #            ":require.config.js",
 #            ":module-id.js",
