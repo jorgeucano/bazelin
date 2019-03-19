@@ -3,7 +3,7 @@ import { BazelRule } from '../bazel-rule.model';
 
 export class NgModuleRule implements BazelRule {
   ruleName = 'ng_module';
-  load = new Map([['@angular//:index.bzl', this.ruleName]]);
+  loadFrom = '@angular//:index.bzl';
   // name Unique name for this rule (required)
   name = '';
   // src Sass files included in this binary.

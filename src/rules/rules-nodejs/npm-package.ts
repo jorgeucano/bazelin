@@ -2,7 +2,7 @@ import { BazelRule } from '../bazel-rule.model';
 
 export class NpmPackageRule implements BazelRule {
   ruleName = 'npm_package';
-  load = new Map([['@build_bazel_rules_nodejs//:defs.bzl', this.ruleName]]);
+  loadFrom = '@build_bazel_rules_nodejs//:defs.bzl';
 
   // * Required parameter for this rule
   name: string;

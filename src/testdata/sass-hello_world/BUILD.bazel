@@ -1,0 +1,12 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@io_bazel_rules_sass//:defs.bzl", "sass_binary")
+
+sass_binary(
+    name = "main_scss",
+    src = "main.scss",
+    deps = [
+        "//src/testdata/sass-shared:_colors_scss",
+        "//src/testdata/sass-shared:_fonts_scss",
+    ],
+)

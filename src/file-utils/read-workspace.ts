@@ -25,7 +25,7 @@ async function readFolder(workspace: BazelinWorkspace, dir: BazelinFolder): Prom
         folders: new Set(),
         files: new Set(),
         rules: new Set<BazelRule>(),
-        rulesString: []
+        buildFile: ''
       });
 
       dir.folders.add(_newDirectory);

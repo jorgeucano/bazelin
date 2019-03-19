@@ -32,7 +32,8 @@ export interface BazelinFolder {
 
   /* set of bazel rules related to this file */
   rules: Set<BazelRule>;
-  rulesString: string[];
+
+  buildFile: string;
 }
 
 export interface BazelinWorkspace {

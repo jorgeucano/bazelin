@@ -1,24 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@io_bazel_rules_sass//sass:sass.bzl", "sass_library")
+load("@io_bazel_rules_sass//:defs.bzl", "sass_library")
 
-# make a :colors target that any sass_binary rules can depend on.
 sass_library(
-    name = "colors",
+    name = "_colors_scss",
     srcs = ["_colors.scss"],
 )
 
-# make a :fonts target that any sass_binary rules can depend on.
 sass_library(
-    name = "fonts",
+    name = "_fonts_scss",
     srcs = ["_fonts.scss"],
-)
-
-# make a :shared target that includes both :colors and :fonts.
-sass_library(
-    name = "shared",
-    srcs = [
-        ":colors",
-        ":fonts",
-    ],
 )

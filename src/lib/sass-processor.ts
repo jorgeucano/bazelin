@@ -50,13 +50,19 @@ export async function getSassFilesDependencies(file: BazelinFile): Promise<Bazel
   });
 
   for (const _internalImportString of _toResolve) {
-    // resolve relative paths to absolute
-    const _resolvedImport = await resolve(_internalImportString, {
-      readFile: false,
-      cwd: dirname(file.path),
-      cache: _sharedCache
-    });
-    depsFiles.internal.add(_resolvedImport.file);
+    try {
+
+      // resolve relative paths to absolute
+      const _resolvedImport = await resolve(_internalImportString, {
+        readFile: false,
+        cwd: dirname(file.path),
+        cache: _sharedCache
+      });
+      depsFiles.internal.add(_resolvedImport.file);
+    } catch (e) {
+      console.error(`Can't resolve "${_internalImportString}" from ${file.path}`);
+      throw e;
+    }
   }
   return depsFiles;
 }
