@@ -64,14 +64,14 @@ async function attachFileDependencies(workspace: BazelinWorkspace) {
       }
     }
 
-    if (/\.ts/.test(file.name)) {
+    if (_isTsFile.test(file.name)) {
       const tsFileDependecies = await getTSFileDependencies(file, workspace);
       file.deps = tsFileDependecies;
       if (file.deps) {
         for (const dep of file.deps.internal) {
           const _target = workspace.filePathToFileMap.get(dep);
           if (!_target) {
-            console.warn(`ts internal dep resolution failed for ${dep}`);
+            console.warn(`ts internal dep resolution failed for ${relative(workspace.rootDir, dep)}`);
             continue;
           }
           _target.requiredBy.add(file);
@@ -101,9 +101,10 @@ function processFile(file: BazelinFile, workspace: BazelinWorkspace, detectCircu
     return file.isProcessed;
   }
   detectCircular.add(file.path);
+
   // process all dependencies before processing file
   if (file.deps) {
-    // process interal dependencies
+    // process internal dependencies
     for (const dep of file.deps.internal) {
       const _depFile = workspace.filePathToFileMap.get(dep);
       if (_depFile && !_depFile.isProcessed) {
@@ -170,7 +171,7 @@ function processFolder(folder: BazelinFolder) {
   }
 
   // do nothing, is my favourite kind of doing
-  if (!_load.length && _actions.length) {
+  if (!_load.length && !_actions.length) {
     return '';
   }
 
@@ -189,10 +190,10 @@ function processRootFolder(workspace: BazelinWorkspace) {
 
   entryPoints.forEach((entryPoint: BazelinFile) => {
     const detectCircular = new Set();
-    processFile(entryPoint, workspace, detectCircular);
     if (_isTsFile.test(entryPoint.name) && !_isTsSpecFile.test(entryPoint.name)) {
-      console.log(`entry point`, entryPoint.name);
+      console.log(`entry point ${relative(workspace.rootDir, entryPoint.path)}`);
     }
+    processFile(entryPoint, workspace, detectCircular);
   });
 }
 

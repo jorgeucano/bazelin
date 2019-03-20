@@ -1,12 +1,21 @@
 import { readFile, stat } from 'fs-extra';
-import { dirname, join, resolve } from 'path';
+import { dirname, join } from 'path';
 import { SyntaxKind } from 'typescript';
 import * as ts from 'typescript';
 import { SourceFile } from 'typescript';
-import { CliArgs } from '../args-parser';
-import { readProjectDependencies } from '../file-utils/read-dependencies';
+
+import { tsquery } from '@phenomnomnominal/tsquery';
 
 import { BazelinFile, BazelinFileDeps, BazelinWorkspace, ProjectDependencies } from '../types';
+
+
+/* Credits for extracting lazy loading dependencies goes to
+ https://github.com/phenomnomnominal/angular-lazy-routes-fix/blob/master/src/noLazyModulePathsRule.ts
+ */
+// Constants:
+const LOAD_CHILDREN_SPLIT = '#';
+const LOAD_CHILDREN_VALUE_QUERY = `StringLiteral[value=/.*${LOAD_CHILDREN_SPLIT}.*/]`;
+const LOAD_CHILDREN_ASSIGNMENT_QUERY = `PropertyAssignment:not(:has(Identifier[name="children"])):has(Identifier[name="loadChildren"]):has(${LOAD_CHILDREN_VALUE_QUERY})`;
 
 export interface TsFilesDeps extends BazelinFileDeps {
   filePath: string;
@@ -44,29 +53,37 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
     styles: new Set()
   };
 
+  function _processDependency(tsFileDeps: TsFilesDeps, text: string) {
+    // check if imports is done to one of tsconfig aliases
+    if (_isPathMapping.test(text)) {
+      tsFileDeps.internal.add(text);
+      return;
+    }
+
+    // check if import is relative (starts with dot)
+    if (text.startsWith('.')) {
+      tsFileDeps.internal.add(text);
+      return;
+    }
+
+    // check if import from npm module
+    if (_isExtDep.test(text)) {
+      tsFileDeps.external.add(text);
+      return;
+    }
+
+    console.warn(`Unresolved dependency ${text} in ${file.path}`);
+    tsFileDeps.external.add(text);
+  }
+
   AST.statements.forEach((statement: any) => {
     switch (statement.kind) {
       case (SyntaxKind.ImportDeclaration):
-        // check if imports is done to one of tsconfig aliases
-        if (_isPathMapping.test(statement.moduleSpecifier.text)) {
-          depsFiles.internal.add(statement.moduleSpecifier.text);
-          return;
+      case (SyntaxKind.ExportDeclaration):
+        if (!statement.moduleSpecifier && statement.kind === SyntaxKind.ExportDeclaration) {
+          break;
         }
-
-        // check if import is relative (starts with dot)
-        if (statement.moduleSpecifier.text.startsWith('.')) {
-          depsFiles.internal.add(statement.moduleSpecifier.text);
-          return;
-        }
-
-        // check if import from npm module
-        if (_isExtDep.test(statement.moduleSpecifier.text)) {
-          depsFiles.external.add(statement.moduleSpecifier.text);
-          return;
-        }
-
-        console.warn(`Unresolved dependency ${statement.moduleSpecifier.text} in ${file.path}`);
-        depsFiles.external.add(statement.moduleSpecifier.text);
+        _processDependency(depsFiles, statement.moduleSpecifier.text);
         break;
       case (SyntaxKind.ClassDeclaration):
         if (!statement.decorators) {
@@ -92,8 +109,35 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
     }
   });
 
-  // todo: resolve internal deps to real files
+  const lazyLoadedPaths: string[] = [];
+  tsquery(fileContent, LOAD_CHILDREN_ASSIGNMENT_QUERY).map(result => {
+    const [valueNode] = tsquery(result, LOAD_CHILDREN_VALUE_QUERY);
+    const [path] = valueNode.text.split(LOAD_CHILDREN_SPLIT);
+    lazyLoadedPaths.push(path);
+  });
+
+  // A list of absolute paths to internal dependencies
   const _internals = new Set<string>();
+
+  // problem with lazy loaded modules is:
+  // file with route definitions could be in wrong folder
+  // so we need to go up by requiredBy chain till we get to router definition
+  // todo: but going each time one folder up is good enough approximation for a start;)
+  let _tryFromPath = file.path;
+  let _exitTime = false;
+  for (const dep of lazyLoadedPaths) {
+    do {
+      try {
+        _internals.add(await resolveTs(_tryFromPath, dep, workspace.rootDir, workspace.projectDeps.pathMappings));
+        _exitTime = true;
+      } catch (e) {
+        // no luck - next
+        _exitTime = _tryFromPath === workspace.rootDir;
+        _tryFromPath = dirname(_tryFromPath);
+      }
+    } while (!_exitTime);
+  }
+
   for (const dep of depsFiles.internal) {
     _internals.add(await resolveTs(file.path, dep, workspace.rootDir, workspace.projectDeps.pathMappings));
   }
