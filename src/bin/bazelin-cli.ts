@@ -22,7 +22,7 @@ Sorting internal vs external imports
 */
 
 import { writeFile } from 'fs-extra';
-import { join } from 'path';
+import { join, relative } from 'path';
 import { args, CliArgs } from '../args-parser';
 import { readProjectDependencies } from '../file-utils/read-dependencies';
 import { readWorkSpace } from '../file-utils/read-workspace';
@@ -45,6 +45,8 @@ export function generateSassRule(file: BazelinFile) {
 /*EXTRACT FUNC START*/
 const _isSassFile = /\.(sass|scss)$/;
 const _isCssFile = /\.css$/;
+const _isTsFile = /\.ts$/;
+const _isTsSpecFile = /\.spec\.ts$|\.mock\.ts$/;
 
 async function attachFileDependencies(workspace: BazelinWorkspace) {
   for (const [, file] of workspace.filePathToFileMap) {
@@ -54,6 +56,7 @@ async function attachFileDependencies(workspace: BazelinWorkspace) {
         for (const dep of file.deps.internal) {
           const _target = workspace.filePathToFileMap.get(dep);
           if (!_target) {
+            console.warn(`sass internal dep resolution failed for ${dep}`);
             continue;
           }
           _target.requiredBy.add(file);
@@ -62,19 +65,49 @@ async function attachFileDependencies(workspace: BazelinWorkspace) {
     }
 
     if (/\.ts/.test(file.name)) {
-      const tsFileDependecies = await getTSFileDependencies(file, args);
+      const tsFileDependecies = await getTSFileDependencies(file, workspace);
+      file.deps = tsFileDependecies;
+      if (file.deps) {
+        for (const dep of file.deps.internal) {
+          const _target = workspace.filePathToFileMap.get(dep);
+          if (!_target) {
+            console.warn(`ts internal dep resolution failed for ${dep}`);
+            continue;
+          }
+          _target.requiredBy.add(file);
+        }
+      }
     }
   }
 }
 
-function processFile(file: BazelinFile, workspace: BazelinWorkspace): boolean {
+function processFile(file: BazelinFile, workspace: BazelinWorkspace, detectCircular: Set<string>): boolean {
+  // Circular dependency detector
+  if (detectCircular.has(file.path)) {
+    const _circular = [];
+    let _startPushing = false;
+    detectCircular.forEach((dep: string) => {
+      if (!_startPushing && dep === file.path) {
+        _startPushing = true;
+      }
+      if (_startPushing) {
+        _circular.push(dep);
+      }
+    });
+    _circular.push(file.path);
+    const _toReport = _circular.map(c => relative(join(workspace.rootDir, workspace.srcPath), c)).join(' -> ');
+    console.warn(`circular dependency: \n ${_toReport}`);
+    detectCircular.delete(file.path);
+    return file.isProcessed;
+  }
+  detectCircular.add(file.path);
   // process all dependencies before processing file
   if (file.deps) {
     // process interal dependencies
     for (const dep of file.deps.internal) {
       const _depFile = workspace.filePathToFileMap.get(dep);
       if (_depFile && !_depFile.isProcessed) {
-        _depFile.isProcessed = processFile(_depFile, workspace);
+        _depFile.isProcessed = processFile(_depFile, workspace, detectCircular);
       }
     }
     // todo: process external dependencies
@@ -96,6 +129,11 @@ function processFile(file: BazelinFile, workspace: BazelinWorkspace): boolean {
     file.folder.rules.add(SassLibraryRule.createFromFile(file, workspace));
   }
 
+  if (_isTsFile.test(file.name)) {
+    // console.log(file.name)
+  }
+
+  detectCircular.delete(file.path);
   // todo: change to false
   return true;
 }
@@ -131,12 +169,18 @@ function processFolder(folder: BazelinFolder) {
     _load.push(`load(${words})`);
   }
 
+  // do nothing, is my favourite kind of doing
+  if (!_load.length && _actions.length) {
+    return '';
+  }
 
   return [visibility, ..._load, ..._actions].join('\n\n');
 }
 
 /* Will find entry points (files which is not required by no one)
 and process whole tree of dependencies
+1. We are looking for sass entry points
+2. todo: We are looking for ngModule entry points
 */
 function processRootFolder(workspace: BazelinWorkspace) {
   const entryPoints = Array.from(workspace.filePathToFileMap)
@@ -144,7 +188,11 @@ function processRootFolder(workspace: BazelinWorkspace) {
     .filter((file: BazelinFile) => file.requiredBy.size === 0);
 
   entryPoints.forEach((entryPoint: BazelinFile) => {
-    processFile(entryPoint, workspace);
+    const detectCircular = new Set();
+    processFile(entryPoint, workspace, detectCircular);
+    if (_isTsFile.test(entryPoint.name) && !_isTsSpecFile.test(entryPoint.name)) {
+      console.log(`entry point`, entryPoint.name);
+    }
   });
 }
 
@@ -170,6 +218,7 @@ async function main(_args: CliArgs) {
   const workspace = await readWorkSpace({
     ..._args,
     srcFolder,
+    projectDeps: dependencies,
     filePathToFileMap: new Map(),
     folderPathToFolderMap: new Map([[_args.srcPath, srcFolder]])
   });
@@ -180,7 +229,9 @@ async function main(_args: CliArgs) {
 
   for (const [, folder] of workspace.folderPathToFolderMap) {
     folder.buildFile = processFolder(folder);
-    await writeFile(join(folder.path, `BUILD_res.bazel`), folder.buildFile);
+    if (folder.buildFile) {
+      await writeFile(join(workspace.rootDir, folder.path, `BUILD_res.bazel`), folder.buildFile);
+    }
   }
 
   console.log('done');

@@ -1,5 +1,11 @@
 import { BazelRule } from './rules/bazel-rule.model';
 
+export interface ProjectDependencies {
+  pathMappings: Array<[string, string[]]>;
+  internal: string[];
+  external: string[];
+}
+
 export interface BazelinFileDeps {
   // deps on node_modules
   external: Set<string>;
@@ -42,6 +48,8 @@ export interface BazelinWorkspace {
   /* relative path to src folder where bazel config should be bootstrapped */
   srcPath: string;
   srcFolder: BazelinFolder;
+
+  projectDeps: ProjectDependencies;
 
   /* pointers to all files */
   filePathToFileMap: Map<string, BazelinFile>;

@@ -26,6 +26,12 @@ export async function getSassFilesDependencies(file: BazelinFile): Promise<Bazel
     }
 
     const importNode = node.first('string');
+    if (!importNode) {
+      // todo: add support for @import url()
+      // todo: like @import url("~@ionic/angular/css/flex-utils.css");
+      // console.warn(`url import in sass file: ${file.path}`);
+      return;
+    }
     const importString = importNode.content;
 
     // "~bootstrap/sass" -> "bootstrap/sass"

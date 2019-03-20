@@ -1,9 +1,12 @@
-import { readFile } from 'fs-extra';
+import { readFile, stat } from 'fs-extra';
+import { dirname, join, resolve } from 'path';
 import { SyntaxKind } from 'typescript';
 import * as ts from 'typescript';
 import { SourceFile } from 'typescript';
 import { CliArgs } from '../args-parser';
-import { ProjectDependencies, readProjectDependencies } from '../file-utils/read-dependencies';
+import { readProjectDependencies } from '../file-utils/read-dependencies';
+
+import { BazelinFile, BazelinFileDeps, BazelinWorkspace, ProjectDependencies } from '../types';
 
 export interface TsFilesDeps extends BazelinFileDeps {
   filePath: string;
@@ -15,13 +18,24 @@ export interface TsFilesDeps extends BazelinFileDeps {
 - external modules (3rd party)
 - internal TS files
 - html and sass files (from Component Metadata)
+- todo: should create a list of ngModules deps from routing
 */
-import { BazelinFile, BazelinFileDeps } from '../types';
 
-export async function getTSFileDependencies(file: BazelinFile, _args: CliArgs) {
+// todo: use tsquery
+export async function getTSFileDependencies(file: BazelinFile, workspace: BazelinWorkspace) {
+  const projectDependencies: ProjectDependencies = workspace.projectDeps;
+
   const fileContent = await readFile(file.path, 'utf8');
   const AST: SourceFile = ts.createSourceFile(file.path, fileContent, ts.ScriptTarget.Latest, true);
-  const projectDependencies: ProjectDependencies = await readProjectDependencies(_args.rootDir);
+
+  const _isExtDepStr = projectDependencies.external.join('|').replace(/@/g, '\\@');
+  const _isExtDep = new RegExp(_isExtDepStr);
+  const _isIntDepStr = projectDependencies.internal
+    .map((v: string) => v.replace('/*', ''))
+    .join('|')
+    .replace(/@/g, '\\@');
+  const _isPathMapping = new RegExp(_isIntDepStr);
+
   const depsFiles: TsFilesDeps = {
     filePath: file.path,
     external: new Set(),
@@ -33,22 +47,37 @@ export async function getTSFileDependencies(file: BazelinFile, _args: CliArgs) {
   AST.statements.forEach((statement: any) => {
     switch (statement.kind) {
       case (SyntaxKind.ImportDeclaration):
-        projectDependencies.internal.forEach((alias: string) => {
-          if (statement.moduleSpecifier.text.startsWith(alias)) {
-            depsFiles.internal.add(statement.moduleSpecifier.text);
-            return;
-          }
-        });
+        // check if imports is done to one of tsconfig aliases
+        if (_isPathMapping.test(statement.moduleSpecifier.text)) {
+          depsFiles.internal.add(statement.moduleSpecifier.text);
+          return;
+        }
 
-        if (statement.moduleSpecifier.text.startsWith('@')) {
+        // check if import is relative (starts with dot)
+        if (statement.moduleSpecifier.text.startsWith('.')) {
+          depsFiles.internal.add(statement.moduleSpecifier.text);
+          return;
+        }
+
+        // check if import from npm module
+        if (_isExtDep.test(statement.moduleSpecifier.text)) {
           depsFiles.external.add(statement.moduleSpecifier.text);
           return;
         }
 
-        depsFiles.internal.add(statement.moduleSpecifier.text);
+        console.warn(`Unresolved dependency ${statement.moduleSpecifier.text} in ${file.path}`);
+        depsFiles.external.add(statement.moduleSpecifier.text);
         break;
       case (SyntaxKind.ClassDeclaration):
+        if (!statement.decorators) {
+          // console.log(`statement.decorators `, file.path);
+          return;
+        }
         statement.decorators.forEach((decorator: any) => {
+          if (!decorator.expression.arguments[0]) {
+            // console.log (`decorator.expression.arguments[0]`, file.path)
+            return;
+          }
           decorator.expression.arguments[0].properties.forEach((property: any) => {
             if (property.name.text === 'templateUrl') {
               depsFiles.html.add(property.initializer.text);
@@ -63,6 +92,104 @@ export async function getTSFileDependencies(file: BazelinFile, _args: CliArgs) {
     }
   });
 
-  console.log('depsFiles', depsFiles);
+  // todo: resolve internal deps to real files
+  const _internals = new Set<string>();
+  for (const dep of depsFiles.internal) {
+    _internals.add(await resolveTs(file.path, dep, workspace.rootDir, workspace.projectDeps.pathMappings));
+  }
+
+  depsFiles.internal = _internals;
   return depsFiles;
+}
+
+// support ts path mapping to folders and files
+//  "paths": {
+//       "@modules/*": ["src/app/modules/*"],
+//       "@moduleA": ["src/app/moduleA/index.ts"],
+//       "@moduleB/*": ["*"],
+function _convertPathMappings(filePath: string, alias: string, paths: string[]): string[] {
+  // case  "@moduleA": ["src/app/moduleA/index.ts"],
+  if (alias.indexOf('*') === -1) {
+    return [alias, paths[0]];
+  }
+
+  const _alias = alias.replace('/*', '');
+  const _ts = '.ts';
+  const _index = './index.ts';
+
+  const _result = paths
+    .map(path => path.replace('/*', ''))
+    .map(path => [_alias, path])
+    .reduce((memo: string[], pathMap: string[]) => {
+      memo.push(filePath.replace(pathMap[0], pathMap[1]) + _ts);
+      memo.push(join(filePath.replace(pathMap[0], pathMap[1]), _index));
+      return memo;
+    }, []);
+  return _result;
+}
+
+/*
+Resolve internal (relative and path mapping) imports to real file path
+we are interested only subset of name resolutions
+
+import { b } from "./moduleB" in /root/src/moduleA.ts
+->
+/root/src/moduleB.ts
+/root/src/moduleB/index.ts
+
+with path mapping
+
+todo: figure it out how make it better
+todo: https://www.typescriptlang.org/docs/handbook/module-resolution.html
+
+*/
+
+// todo: most probably I could avoid this complication if could make ts.resolveModuleName work!
+async function resolveTs(fromFile: string, toPath: string, rootDir: string, pathMappings: Array<[string, string[]]>): Promise<string> {
+  const _ts = '.ts';
+  const _index = './index.ts';
+  const _baseFolder = dirname(fromFile);
+  const _path0 = join(_baseFolder, toPath);
+  const _path1 = join(_baseFolder, toPath) + _ts;
+  const _path2 = join(_baseFolder, toPath, _index);
+
+  // [RegExt for test, alias, paths]
+  const aliasesWithTest = pathMappings.map(pathMapping => [
+    new RegExp(pathMapping[0]
+      .replace('/*', '')
+      .replace(/@/g, '\\@')),
+    pathMapping[0],
+    pathMapping[1]]);
+
+  const _mappedPaths = aliasesWithTest
+    .filter((aliasWithTest) => (aliasWithTest[0] as RegExp).test(toPath))
+    .map((aliasWithTest => _convertPathMappings(toPath, aliasWithTest[1] as string, aliasWithTest[2] as string[])));
+  const _flatMapPaths = [].concat(..._mappedPaths as any);
+  const _pathsToTest = _flatMapPaths.map((_aliasPath: string) => join(rootDir, _aliasPath));
+
+  return Promise.all([
+    _testFile(_path1),
+    _testFile(_path2),
+    _testFile(_path0),
+    ..._pathsToTest.map(_pathToTest => _testFile(_pathToTest))
+  ])
+    .then((results: string[]) => {
+      const _success = results.filter((result: string) => !!result);
+      if (!_success.length) {
+        throw new Error(`Could not resolve "${toPath}" from "${fromFile}"`);
+      }
+      if (_success.length > 1) {
+        throw new Error(`Unknown things are happening "${toPath}" from "${fromFile}"`);
+      }
+      return _success[0];
+    });
+}
+
+async function _testFile(filePath: string): Promise<string> {
+  try {
+    const _stats = await stat(filePath);
+    return _stats.isFile() ? filePath : '';
+  } catch (e) {
+    return '';
+  }
 }

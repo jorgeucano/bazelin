@@ -1,9 +1,10 @@
 /* tslint:disable:variable-name */
+import { BazelinFile, BazelinWorkspace } from '../../types';
 import { BazelRule } from '../bazel-rule.model';
 
 export class NgModuleRule implements BazelRule {
   ruleName = 'ng_module';
-  loadFrom = '@angular//:index.bzl';
+  loadFrom = '@npm_angular_bazel//:index.bzl';
   // name Unique name for this rule (required)
   name = '';
   // src Sass files included in this binary.
@@ -21,19 +22,26 @@ export class NgModuleRule implements BazelRule {
   // some properties in the tsconfig are governed by Bazel and will be overridden, such as target and module
   tsconfig?: string;
 
+  static createFromFile(file: BazelinFile, workspace: BazelinWorkspace): NgModuleRule {
+    const _obj: any = {
+
+    };
+    return _obj;
+  }
+
   generate(): string {
     return [
       `sass_binary(`,
-        `name = "${ this.name }",`,
-        `srcs = "${ this.srcs.map(src => `"${ src }"`).join(',') }",`,
-        !this.deps.length ? '' :
-          `deps = [`,
-            this.deps.map(dep => `"${ dep }"`).join(','),
-          `],`,
-        !this.assets ? '' : `assets = "${ this.assets }",`,
-        !this.compiler ? '' : `compiler = "${ this.compiler }",`,
-        !this.node_modules ? '' : `node_modules = "${ this.node_modules }",`,
-        !this.tsconfig ? '' : `tsconfig = "${ this.tsconfig }",`,
+      `name = "${this.name}",`,
+      `srcs = "${this.srcs.map(src => `"${src}"`).join(',')}",`,
+      !this.deps.length ? '' :
+        `deps = [`,
+      this.deps.map(dep => `"${dep}"`).join(','),
+      `],`,
+      !this.assets ? '' : `assets = "${this.assets}",`,
+      !this.compiler ? '' : `compiler = "${this.compiler}",`,
+      !this.node_modules ? '' : `node_modules = "${this.node_modules}",`,
+      !this.tsconfig ? '' : `tsconfig = "${this.tsconfig}",`,
       `)`
     ].join('\n');
   }
