@@ -21,7 +21,7 @@ export interface BazelinFile {
   /* pointer to folder in which file is */
   folder: BazelinFolder;
   /* map of dependencies */
-  deps?: BazelinFileDeps;
+  deps: BazelinFileDeps;
   /* this file is required by other files */
   requiredBy: Set<BazelinFile>;
   /* is this file processed? yes - means rules are generated */
@@ -29,6 +29,9 @@ export interface BazelinFile {
   // any additional metadata about file
   // like isNgModule, etc.
   meta: Map<string, any>;
+
+  /* set of bazel rules related to this file */
+  rules: Set<BazelRule>;
 }
 
 export interface BazelinFolder {
@@ -39,7 +42,7 @@ export interface BazelinFolder {
   /* files in this folder */
   files: Set<BazelinFile>;
 
-  /* set of bazel rules related to this file */
+  /* set of bazel rules related to this folder */
   rules: Set<BazelRule>;
 
   buildFile: string;

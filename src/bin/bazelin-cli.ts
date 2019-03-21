@@ -21,25 +21,22 @@ Sorting internal vs external imports
 3. TODO: create isLocalImport or is 3rd party import check
 */
 
-import { writeFile } from 'fs-extra';
-import { join, relative } from 'path';
-import { args, CliArgs } from '../args-parser';
-import { readProjectDependencies } from '../file-utils/read-dependencies';
-import { readWorkSpace } from '../file-utils/read-workspace';
-import { getSassFilesDependencies } from '../lib/sass-processor';
-import { getTSFileDependencies } from '../lib/ts-processor';
-import { isNgModule } from '../rules/rules-angular/ng-utils';
-import { SassBinaryRule } from '../rules/rules-sass/sass-binary';
-import { SassLibraryRule } from '../rules/rules-sass/sass-library';
-import { BazelinFile, BazelinFolder, BazelinWorkspace } from '../types';
-import {NgModuleRule} from "../rules/rules-angular/ng-module";
+import {writeFile} from 'fs-extra';
+import {join, relative} from 'path';
+import {args, CliArgs} from '../args-parser';
+import {_isCssFile, _isMainProd, _isSassFile, _isTsFile, _isTsSpecFile} from '../file-utils/file-ext-patterns';
+import {readProjectDependencies} from '../file-utils/read-dependencies';
+import {readWorkSpace} from '../file-utils/read-workspace';
+import {getSassFilesDependencies} from '../lib/sass-processor';
+import {getTSFileDependencies} from '../lib/ts-processor';
+import {isNgModule} from '../rules/rules-angular/ng-utils';
+import {SassBinaryRule} from '../rules/rules-sass/sass-binary';
+import {SassLibraryRule} from '../rules/rules-sass/sass-library';
+import {BazelinFile, BazelinFolder, BazelinWorkspace} from '../types';
+import {NgModuleRule} from '../rules/rules-angular/ng-module';
 
 
 /*EXTRACT FUNC START*/
-const _isSassFile = /\.(sass|scss)$/;
-const _isCssFile = /\.css$/;
-const _isTsFile = /\.ts$/;
-const _isTsSpecFile = /\.spec\.ts$|\.mock\.ts$/;
 
 async function attachFileDependencies(workspace: BazelinWorkspace) {
   for (const [, file] of workspace.filePathToFileMap) {
@@ -58,8 +55,12 @@ async function attachFileDependencies(workspace: BazelinWorkspace) {
     }
 
     if (_isTsFile.test(file.name)) {
-      const tsFileDependecies = await getTSFileDependencies(file, workspace);
-      file.deps = tsFileDependecies;
+      const ngFilesDeps = await getTSFileDependencies(file, workspace);
+      file.deps = ngFilesDeps;
+      if (_isTsSpecFile.test(file.path)) {
+        // todo: process spec files
+        continue;
+      }
       if (file.deps) {
         for (const dep of file.deps.internal) {
           const _target = workspace.filePathToFileMap.get(dep);
@@ -75,6 +76,7 @@ async function attachFileDependencies(workspace: BazelinWorkspace) {
 }
 
 function processFile(file: BazelinFile, workspace: BazelinWorkspace, detectCircular: Set<string>): boolean {
+  console.log(`processing ${relative(workspace.rootDir, file.path)}`);
   // Circular dependency detector
   if (detectCircular.has(file.path)) {
     const _circular = [];
@@ -95,6 +97,14 @@ function processFile(file: BazelinFile, workspace: BazelinWorkspace, detectCircu
   }
   detectCircular.add(file.path);
 
+  let _rule;
+  if (isNgModule(file)) {
+    // ng modules are so special
+    _rule = NgModuleRule.createFromFile(file, workspace);
+    file.rules.add(_rule);
+  }
+
+
   // process all dependencies before processing file
   if (file.deps) {
     // process internal dependencies
@@ -106,28 +116,57 @@ function processFile(file: BazelinFile, workspace: BazelinWorkspace, detectCircu
     }
     // todo: process external dependencies
   }
+  detectCircular.delete(file.path);
 
   if (_isSassFile.test(file.name)) {
     if (file.deps && file.name.startsWith('_')) {
       file.folder.rules.add(SassLibraryRule.createFromFile(file, workspace));
       return true;
     }
-    if (file.requiredBy.size === 0) {
-      file.folder.rules.add(SassBinaryRule.createFromFile(file, workspace));
-      return true;
-    }
+    // if (file.requiredBy.size === 0) {
+    file.folder.rules.add(SassBinaryRule.createFromFile(file, workspace));
+    return true;
+    // }
   }
 
-  // todo: should it be included in filegroup? cuz css file is not copied to output
   if (_isCssFile.test(file.name)) {
     file.folder.rules.add(SassLibraryRule.createFromFile(file, workspace));
+    return true;
   }
 
-  if (_isTsFile.test(file.name) && isNgModule(file)) {
-    file.folder.rules.add(NgModuleRule.createFromFile(file, workspace));
+  if (_isTsFile.test(file.name)) {
+    if (isNgModule(file) && _rule) {
+      file.folder.rules.add(_rule);
+      file.isProcessed = true;
+      return true;
+    }
+
+    if (_isMainProd.test(file.name)) {
+      // add it to dependency of child ngModule ???
+      return true;
+    }
+
+    // ng components and other .ts files
+    const _depPath = Array
+      .from(detectCircular)
+      .reverse()
+      .map(dep => workspace.filePathToFileMap.get(dep));
+    // todo: simplify this reverse engineer
+    for (const _ngModule of _depPath) {
+      if (!_ngModule || !isNgModule(_ngModule)) {
+        continue;
+      }
+      for (const rule of _ngModule.rules) {
+        if (rule instanceof NgModuleRule) {
+          rule.addDeps(file);
+          return true;
+        }
+      }
+    }
+
+    return true;
   }
 
-  detectCircular.delete(file.path);
   // todo: change to false
   return true;
 }
@@ -183,9 +222,11 @@ function processRootFolder(workspace: BazelinWorkspace) {
 
   entryPoints.forEach((entryPoint: BazelinFile) => {
     const detectCircular = new Set();
-    if (_isTsFile.test(entryPoint.name) && !_isTsSpecFile.test(entryPoint.name)) {
-      console.log(`entry point ${relative(workspace.rootDir, entryPoint.path)}`);
+    if (_isTsSpecFile.test(entryPoint.name)) {
+      // todo: process test files
+      return;
     }
+    console.log(`entry point ${relative(workspace.rootDir, entryPoint.path)}`);
     processFile(entryPoint, workspace, detectCircular);
   });
 }
@@ -224,7 +265,7 @@ async function main(_args: CliArgs) {
   for (const [, folder] of workspace.folderPathToFolderMap) {
     folder.buildFile = processFolder(folder);
     if (folder.buildFile) {
-      await writeFile(join(workspace.rootDir, folder.path, `BUILD_res.bazel`), folder.buildFile);
+      await writeFile(join(workspace.rootDir, folder.path, `BUILD.bazel`), folder.buildFile);
     }
   }
 

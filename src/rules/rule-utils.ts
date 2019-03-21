@@ -13,7 +13,7 @@ function _filePathToActionAbsName(filePath: string, workspace: BazelinWorkspace)
   return `//${relative(workspace.rootDir, dirname(filePath))}:${filePathToActionLabel(filePath)}`;
 }
 
-function _intDepToActioName(file: BazelinFile, pathToDep: string, workspace: BazelinWorkspace): string {
+export function _intDepToActionName(file: BazelinFile, pathToDep: string, workspace: BazelinWorkspace): string {
   if (isSameFolder(pathToDep, file.path)) {
     return `:${filePathToActionLabel(pathToDep)}`;
   }
@@ -24,7 +24,7 @@ export function generateInternalDepLabels(file: BazelinFile, workspace: BazelinW
   const deps: string[] = [];
   if (file.deps) {
     for (const pathToDep of file.deps.internal) {
-      deps.push(_intDepToActioName(file, pathToDep, workspace));
+      deps.push(_intDepToActionName(file, pathToDep, workspace));
     }
   }
   return deps;

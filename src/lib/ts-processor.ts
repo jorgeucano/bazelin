@@ -1,11 +1,10 @@
 import {readFile, stat} from 'fs-extra';
 import {dirname, join} from 'path';
-import {element} from 'protractor';
-import {SyntaxKind} from 'typescript';
 import * as ts from 'typescript';
 import {SourceFile} from 'typescript';
 
 import {tsquery} from '@phenomnomnominal/tsquery';
+import {_isCssFile, _isSassFile} from '../file-utils/file-ext-patterns';
 import {markAsNgModule} from '../rules/rules-angular/ng-utils';
 
 import {BazelinFile, BazelinFileDeps, BazelinWorkspace, ProjectDependencies} from '../types';
@@ -138,6 +137,14 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
     });
   });
 
+  for (const dep of depsFiles.html) {
+    depsFiles.internal.add(await _resolveHtml(file.path, dep));
+  }
+
+  for (const dep of depsFiles.styles) {
+    depsFiles.internal.add(await _resolveStyles(file.path, dep));
+  }
+
   /* RESOLVE LOAD CHILD IN ROUTING START */
 
   const lazyLoadedPaths: string[] = [];
@@ -267,4 +274,32 @@ async function _testFile(filePath: string): Promise<string> {
   } catch (e) {
     return '';
   }
+}
+
+async function _resolveHtml(fromFile: string, toPath: string): Promise<string> {
+  const _path = join(dirname(fromFile), toPath);
+  if (await _testFile(_path)) {
+    return _path;
+  }
+
+  throw new Error(`Could not resolve ${toPath} from ${fromFile}`);
+}
+
+async function _resolveStyles(fromFile: string, toPath: string): Promise<string> {
+  // todo: angular + bazel doesn't support imports from .scss or sass files with bazel
+  // todo: so you should replace it with .css imports
+  if (!_isCssFile.test(toPath)) {
+    throw new Error(`Please rename ${toPath} to .css in ${fromFile}`);
+  }
+
+  // so the trick is: we depend on css file, but replace it to sass
+  // to get css when bazel will compile sass to css
+  // magic
+  const _pathSass = join(dirname(fromFile), toPath.replace(_isCssFile, '.sass'));
+  const _pathScss = join(dirname(fromFile), toPath.replace(_isCssFile, '.scss'));
+  const _resolvedSass = await _testFile(_pathSass) || await _testFile(_pathScss);
+  if (_resolvedSass) {
+    return _resolvedSass;
+  }
+  throw new Error(`Error: could not resolve ${toPath} from ${fromFile}`);
 }
