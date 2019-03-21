@@ -28,18 +28,10 @@ import { readProjectDependencies } from '../file-utils/read-dependencies';
 import { readWorkSpace } from '../file-utils/read-workspace';
 import { getSassFilesDependencies } from '../lib/sass-processor';
 import { getTSFileDependencies } from '../lib/ts-processor';
+import { isNgModule } from '../rules/rules-angular/ng-utils';
 import { SassBinaryRule } from '../rules/rules-sass/sass-binary';
 import { SassLibraryRule } from '../rules/rules-sass/sass-library';
 import { BazelinFile, BazelinFolder, BazelinWorkspace } from '../types';
-
-
-/* EXTRACT START  */
-
-export function generateSassRule(file: BazelinFile) {
-
-}
-
-/* EXTRACT END */
 
 
 /*EXTRACT FUNC START*/
@@ -130,8 +122,8 @@ function processFile(file: BazelinFile, workspace: BazelinWorkspace, detectCircu
     file.folder.rules.add(SassLibraryRule.createFromFile(file, workspace));
   }
 
-  if (_isTsFile.test(file.name)) {
-    // console.log(file.name)
+  if (_isTsFile.test(file.name) && isNgModule(file)) {
+    console.log(file.name);
   }
 
   detectCircular.delete(file.path);
@@ -191,7 +183,7 @@ function processRootFolder(workspace: BazelinWorkspace) {
   entryPoints.forEach((entryPoint: BazelinFile) => {
     const detectCircular = new Set();
     if (_isTsFile.test(entryPoint.name) && !_isTsSpecFile.test(entryPoint.name)) {
-      console.log(`entry point ${relative(workspace.rootDir, entryPoint.path)}`);
+      // console.log(`entry point ${relative(workspace.rootDir, entryPoint.path)}`);
     }
     processFile(entryPoint, workspace, detectCircular);
   });

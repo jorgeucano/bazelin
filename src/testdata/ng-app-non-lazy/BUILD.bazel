@@ -38,8 +38,12 @@ rollup_bundle(
     entry_point = "src/testdata/ng-app-non-lazy/main.prod",
     deps = [
         "//src/testdata/ng-app-non-lazy:application",
+        "@npm//@angular/core",
+        "@npm//@angular/platform-browser",
+        "@npm//@angular/animations",
+        "@npm//@angular/platform-browser-dynamic",
         "@npm//@angular/router",
-        "@npm//rxjs",
+        "@npm//@types",
     ],
 )
 

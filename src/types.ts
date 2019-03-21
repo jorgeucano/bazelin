@@ -26,6 +26,9 @@ export interface BazelinFile {
   requiredBy: Set<BazelinFile>;
   /* is this file processed? yes - means rules are generated */
   isProcessed: boolean;
+  // any additional metadata about file
+  // like isNgModule, etc.
+  meta: Map<string, any>;
 }
 
 export interface BazelinFolder {

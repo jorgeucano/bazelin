@@ -13,7 +13,11 @@ multi_sass_binary(
 ng_module(
     name = "src",
     srcs = glob(
-        include = ["**/*.ts"],
+        include = [
+            "main.prod.ts",
+            "app.component.ts",
+            "app.module.ts",
+            ],
         exclude = [
             "**/*.spec.ts",
             "main.ts",
@@ -39,7 +43,10 @@ rollup_bundle(
     entry_point = "src/testdata/ng-module/main.prod",
     deps = [
         "//src/testdata/ng-module:src",
+        "@npm//@angular/core",
+        "@npm//@angular/platform-browser",
         "@npm//@angular/router",
+        "@npm//@types",
         "@npm//rxjs",
     ],
 )
