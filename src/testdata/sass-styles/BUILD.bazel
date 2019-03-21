@@ -3,20 +3,29 @@ package(default_visibility = ["//visibility:public"])
 load("@io_bazel_rules_sass//:defs.bzl", "sass_binary", "sass_library")
 
 sass_library(
-  name = "_fonts_scss",
-  srcs = ["_fonts.scss"],
+    name = "_fonts_scss",
+    srcs = ["_fonts.scss"],
 )
+
 sass_library(
-  name = "colors_scss",
-  srcs = ["colors.scss"],
+    name = "colors_scss",
+    srcs = ["colors.scss"],
 )
+
 sass_binary(
-  name = "main_scss",
-  src = "main.scss",
-  deps = [":_fonts_scss",":colors_scss"],
+    name = "main_scss",
+    src = "main.scss",
+    deps = [
+        ":_fonts_scss",
+        ":colors_scss",
+    ],
 )
+
 sass_binary(
-  name = "shared_scss",
-  src = "shared.scss",
-  deps = [":_fonts_scss",":colors_scss"],
+    name = "shared_scss",
+    src = "shared.scss",
+    deps = [
+        ":_fonts_scss",
+        ":colors_scss",
+    ],
 )

@@ -2,7 +2,7 @@ import { BazelRule } from '../bazel-rule.model';
 
 export class TsDevserverRule implements BazelRule {
   ruleName = 'ts_devserver';
-  load = new Map([['@build_bazel_rules_nodejs//:defs.bzl', this.ruleName]]);
+  loadFrom = '@build_bazel_rules_nodejs//:defs.bzl';
 
   // * Required parameter for this rule
   name: string;

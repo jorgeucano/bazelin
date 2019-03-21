@@ -1,0 +1,14 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@io_bazel_rules_sass//:defs.bzl", "sass_library", "sass_binary")
+
+sass_library(
+  name = "_other_css",
+  srcs = ["_other.css"],
+)
+
+sass_binary(
+  name = "main_scss",
+  src = "main.scss",
+  deps = [":_other_css"],
+)

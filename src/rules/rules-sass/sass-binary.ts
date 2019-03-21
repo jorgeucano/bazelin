@@ -2,12 +2,13 @@
 import { basename, dirname, relative } from 'path';
 import { BazelinFile, BazelinWorkspace } from '../../types';
 import { BazelRule } from '../bazel-rule.model';
+import { filePathToActionLabel, generateInternalDepLabels } from '../rule-utils';
 
 
 /* converts to css and consumed by ng */
 export class SassBinaryRule implements BazelRule {
-  ruleName = 'sass_binary';
-  load = new Map([['@io_bazel_rules_sass//:defs.bzl', this.ruleName]]);
+  readonly ruleName = 'sass_binary';
+  readonly loadFrom = '@io_bazel_rules_sass//:defs.bzl';
   // name Unique name for this rule (required)
   name = '';
   // src Sass files included in this binary.
@@ -21,35 +22,15 @@ export class SassBinaryRule implements BazelRule {
   // Whether to generate sourcemaps for the generated CSS. Defaults to True. First letter should be in Uppercase
   sourcemap: boolean | undefined;
 
-  constructor(obj: SassBinaryRule) {
-    Object.assign(this, obj);
-  }
+
 
   static createFromFile(file: BazelinFile, workspace: BazelinWorkspace): SassBinaryRule {
     const fileName = basename(file.path);
     // todo: convert internal/external deps
-    const deps: string[] = [];
+    const deps = generateInternalDepLabels(file, workspace);
 
-    function isSameFolder(path1: string, path2: string): boolean {
-      return dirname(path1) === dirname(path2);
-    }
-
-    // todo: or save consumable name in BazelinFile?
-    function fileNameToRule(pathToFile: string): string {
-      return basename(pathToFile).replace('.', '_');
-    }
-
-    if (file.deps) {
-      for (const pathToDep of file.deps.internal) {
-        if (isSameFolder(pathToDep, file.path)) {
-          deps.push(`:${fileNameToRule(pathToDep)}`);
-          continue;
-        }
-        deps.push(`//${relative(workspace.srcPath, dirname(pathToDep))}:${fileNameToRule(pathToDep)}`);
-      }
-    }
     const _obj = new SassBinaryRule({
-      name: basename(file.path).replace('.', '_'),
+      name: filePathToActionLabel(file.path),
       // convert abs path to bazel path to dependency
       // so "/usr/vasya/project/assets/_some.sass
       // -> "//assets:_some
@@ -61,11 +42,15 @@ export class SassBinaryRule implements BazelRule {
     return _obj;
   }
 
+  constructor(obj: SassBinaryRule) {
+    Object.assign(this, obj);
+  }
+
   generate(): string {
     const _result = [
       `sass_binary(
-  name = "${this.name}",
-  src = "${this.src}",`];
+    name = "${this.name}",
+    src = "${this.src}",`];
     if (this.deps.length) {
       const _deps = this.deps.map(dep => `"${dep}"`).join(',');
       _result.push(`  deps = [${_deps}],`);

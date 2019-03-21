@@ -3,7 +3,7 @@ import { BazelRule } from '../bazel-rule.model';
 
 export class TsLibraryRule implements BazelRule {
   ruleName = 'ts_library';
-  load = new Map([['@build_bazel_rules_typescript//:defs.bzl', this.ruleName]]);
+  loadFrom = '@build_bazel_rules_typescript//:defs.bzl';
   // name Unique name for this rule (required)
   name = '';
   // src Sass files included in this binary.

@@ -2,7 +2,7 @@ import { BazelRule } from '../bazel-rule.model';
 
 export class RollupBundleRule implements BazelRule {
   ruleName = 'rollup_bundle';
-  load = new Map([['@build_bazel_rules_nodejs//:defs.bzl', this.ruleName]]);
+  loadFrom = '@build_bazel_rules_nodejs//:defs.bzl';
 
   // * Required parameter for this rule
   name: string;

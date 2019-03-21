@@ -26,6 +26,12 @@ export async function getSassFilesDependencies(file: BazelinFile): Promise<Bazel
     }
 
     const importNode = node.first('string');
+    if (!importNode) {
+      // todo: add support for @import url()
+      // todo: like @import url("~@ionic/angular/css/flex-utils.css");
+      // console.warn(`url import in sass file: ${file.path}`);
+      return;
+    }
     const importString = importNode.content;
 
     // "~bootstrap/sass" -> "bootstrap/sass"
@@ -50,13 +56,19 @@ export async function getSassFilesDependencies(file: BazelinFile): Promise<Bazel
   });
 
   for (const _internalImportString of _toResolve) {
-    // resolve relative paths to absolute
-    const _resolvedImport = await resolve(_internalImportString, {
-      readFile: false,
-      cwd: dirname(file.path),
-      cache: _sharedCache
-    });
-    depsFiles.internal.add(_resolvedImport.file);
+    try {
+
+      // resolve relative paths to absolute
+      const _resolvedImport = await resolve(_internalImportString, {
+        readFile: false,
+        cwd: dirname(file.path),
+        cache: _sharedCache
+      });
+      depsFiles.internal.add(_resolvedImport.file);
+    } catch (e) {
+      console.error(`Can't resolve "${_internalImportString}" from ${file.path}`);
+      throw e;
+    }
   }
   return depsFiles;
 }

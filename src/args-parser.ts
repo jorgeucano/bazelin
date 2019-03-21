@@ -1,3 +1,5 @@
+import { resolve } from 'path';
+
 const yargs = require('yargs');
 
 export interface CliArgs {
@@ -8,7 +10,7 @@ export interface CliArgs {
 const _args = yargs
   .scriptName('dist/index.js')
   .usage('$0 [args] {path}')
-  // .option('in', {describe: 'path to input data file'})
+  .option('root', {describe: 'path to root folder'})
   // .option('out', {describe: 'path to out file'})
   .option('verbose', { describe: 'persist tree of choices' })
   .help()
@@ -21,7 +23,7 @@ if (srcPath === null) {
 }
 
 // todo: should it be configurable later on?
-const rootDir = process.cwd();
+const rootDir = !_args.root ? process.cwd() : resolve(_args.root);
 
 export const args: CliArgs = { srcPath, rootDir };
 

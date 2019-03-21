@@ -25,7 +25,7 @@ async function readFolder(workspace: BazelinWorkspace, dir: BazelinFolder): Prom
         folders: new Set(),
         files: new Set(),
         rules: new Set<BazelRule>(),
-        rulesString: []
+        buildFile: ''
       });
 
       dir.folders.add(_newDirectory);
@@ -36,7 +36,8 @@ async function readFolder(workspace: BazelinWorkspace, dir: BazelinFolder): Prom
         path: _newPath,
         folder: dir,
         requiredBy: new Set<BazelinFile>(),
-        isProcessed: false
+        isProcessed: false,
+        meta: new Map()
       };
       dir.files.add(_fileObj);
       workspace.filePathToFileMap.set(_fileObj.path, _fileObj);
