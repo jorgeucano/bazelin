@@ -1,6 +1,5 @@
 FROM node:10.15.3
 
-
 RUN apt-get update
 RUN apt-get install -y pkg-config zip g++ zlib1g-dev unzip python git wget
 
@@ -13,11 +12,9 @@ RUN export PATH="$PATH:$HOME/bin"
 RUN mkdir -p /home/bazelin
 WORKDIR /home/bazelin
 
-# Install dependencies
-COPY package.json ./
-RUN npm install --quiet
 
 COPY ./ ./
-RUN npm run postinstall
+RUN npm --unsafe-perm install
 
-CMD ["npm", "run", "bazel-build"]
+
+CMD ["npm", "run", "bazel-bandle"]
