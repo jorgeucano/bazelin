@@ -22,9 +22,7 @@ export class SassBinaryRule implements BazelRule {
   // Whether to generate sourcemaps for the generated CSS. Defaults to True. First letter should be in Uppercase
   sourcemap: boolean | undefined;
 
-  constructor(obj: SassBinaryRule) {
-    Object.assign(this, obj);
-  }
+
 
   static createFromFile(file: BazelinFile, workspace: BazelinWorkspace): SassBinaryRule {
     const fileName = basename(file.path);
@@ -44,11 +42,15 @@ export class SassBinaryRule implements BazelRule {
     return _obj;
   }
 
+  constructor(obj: SassBinaryRule) {
+    Object.assign(this, obj);
+  }
+
   generate(): string {
     const _result = [
       `sass_binary(
-  name = "${this.name}",
-  src = "${this.src}",`];
+    name = "${this.name}",
+    src = "${this.src}",`];
     if (this.deps.length) {
       const _deps = this.deps.map(dep => `"${dep}"`).join(',');
       _result.push(`  deps = [${_deps}],`);

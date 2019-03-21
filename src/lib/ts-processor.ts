@@ -1,13 +1,14 @@
-import { readFile, stat } from 'fs-extra';
-import { dirname, join } from 'path';
-import { SyntaxKind } from 'typescript';
+import {readFile, stat} from 'fs-extra';
+import {dirname, join} from 'path';
+import {element} from 'protractor';
+import {SyntaxKind} from 'typescript';
 import * as ts from 'typescript';
-import { SourceFile } from 'typescript';
+import {SourceFile} from 'typescript';
 
-import { tsquery } from '@phenomnomnominal/tsquery';
-import { markAsNgModule } from '../rules/rules-angular/ng-utils';
+import {tsquery} from '@phenomnomnominal/tsquery';
+import {markAsNgModule} from '../rules/rules-angular/ng-utils';
 
-import { BazelinFile, BazelinFileDeps, BazelinWorkspace, ProjectDependencies } from '../types';
+import {BazelinFile, BazelinFileDeps, BazelinWorkspace, ProjectDependencies} from '../types';
 
 
 /* Credits for extracting lazy loading dependencies goes to
@@ -19,6 +20,14 @@ const LOAD_CHILDREN_VALUE_QUERY = `StringLiteral[value=/.*${LOAD_CHILDREN_SPLIT}
 const LOAD_CHILDREN_ASSIGNMENT_QUERY = `PropertyAssignment:not(:has(Identifier[name="children"])):has(Identifier[name="loadChildren"]):has(${LOAD_CHILDREN_VALUE_QUERY})`;
 
 const NGMODULE_DECORATOR = `Decorator:has(Identifier:has([name=NgModule]))`;
+
+const IMPORTS = `ImportDeclaration:has(StringLiteral)`;
+const EXPORTS = `ExportDeclaration:has(StringLiteral)`;
+
+// const TEMPLATE_URLS = `Decorator:has(PropertyAssignment:has(Identifier:has([name=templateUrl])))`;
+const COMPONENTS_OR_DIRECTIVES = `Decorator:has(Identifier[name=/Component|Directive/])`;
+const TEMPLATE_URLS = `PropertyAssignment:has(Identifier[name=templateUrl]):has(StringLiteral)`;
+const STYLE_URLS = `PropertyAssignment:has(Identifier[name=styleUrls]):has(ArrayLiteralExpression)`;
 
 export interface NgFilesDeps extends BazelinFileDeps {
   isNgModule: boolean;
@@ -43,13 +52,13 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
 
   const _isExtDepStr = projectDependencies.external.join('|').replace(/@/g, '\\@');
   // it's hard to believe you don't have npm deps, but just in case ;)
-  const _isExtDep = projectDependencies.external.length ? new RegExp(_isExtDepStr) : { test: (_: string) => false };
+  const _isExtDep = projectDependencies.external.length ? new RegExp(_isExtDepStr) : {test: (_: string) => false};
   const _isIntDepStr = projectDependencies.internal
     .map((v: string) => v.replace('/*', ''))
     .join('|')
     .replace(/@/g, '\\@');
   // if tsconfig path mapping mappings are empty
-  const _isPathMapping = projectDependencies.internal.length ? new RegExp(_isIntDepStr) : { test: (_: string) => false };
+  const _isPathMapping = projectDependencies.internal.length ? new RegExp(_isIntDepStr) : {test: (_: string) => false};
 
   const depsFiles: NgFilesDeps = {
     isNgModule: false,
@@ -59,40 +68,6 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
     html: new Set(),
     styles: new Set()
   };
-
-  AST.statements.forEach((statement: any) => {
-    switch (statement.kind) {
-      case (SyntaxKind.ImportDeclaration):
-      case (SyntaxKind.ExportDeclaration):
-        if (!statement.moduleSpecifier && statement.kind === SyntaxKind.ExportDeclaration) {
-          break;
-        }
-        _processDependency(depsFiles, statement.moduleSpecifier.text);
-        break;
-      // todo: replace this with tsquery selectors
-      case (SyntaxKind.ClassDeclaration):
-        if (!statement.decorators) {
-          // console.log(`statement.decorators `, file.path);
-          return;
-        }
-        statement.decorators.forEach((decorator: any) => {
-          if (!decorator.expression.arguments[0]) {
-            // console.log (`decorator.expression.arguments[0]`, file.path)
-            return;
-          }
-          decorator.expression.arguments[0].properties.forEach((property: any) => {
-            if (property.name.text === 'templateUrl') {
-              depsFiles.html.add(property.initializer.text);
-            }
-
-            if (property.name.text === 'styleUrls') {
-              depsFiles.styles.add(property.initializer.elements[0].text);
-            }
-          });
-        });
-        break;
-    }
-  });
 
   // Sort out external and internal dependencies
   function _processDependency(tsFileDeps: NgFilesDeps, text: string) {
@@ -119,6 +94,17 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
   }
 
   /* RESOLVE INTERNAL TS FILES DEPENDENCIES START */
+  // Process import statements
+  tsquery(fileContent, IMPORTS).map((statement: any) => {
+    _processDependency(depsFiles, statement.moduleSpecifier.text);
+  });
+
+  // Process export statements
+  tsquery(fileContent, EXPORTS).map((statement: any) => {
+    if (statement.moduleSpecifier) {
+      _processDependency(depsFiles, statement.moduleSpecifier.text);
+    }
+  });
 
   // A list of absolute paths to internal dependencies
   const _internals = new Set<string>();
@@ -130,8 +116,26 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
 
   /* RESOLVE INTERNAL TS FILES DEPENDENCIES END */
 
+  // Mark as ngModule if found @NgModule decorator
   tsquery(fileContent, NGMODULE_DECORATOR).map(result => {
     markAsNgModule(file);
+  });
+
+
+  // Process style and template URLs in Components and Directives
+  tsquery(fileContent, COMPONENTS_OR_DIRECTIVES).map(decorator => {
+    tsquery(decorator, TEMPLATE_URLS).map((statement: any) => {
+      depsFiles.html.add(statement.initializer.text);
+    });
+
+    tsquery(decorator, STYLE_URLS).map((statement: any) => {
+      statement.initializer.elements.forEach((_styleUrls: any) => {
+        // todo: as for now .sass|.scss|.less imports should be reported
+        // todo: .css imports should be converted into deps to .sass files
+        // and put to internal dependencies
+        depsFiles.styles.add(_styleUrls.text);
+      });
+    });
   });
 
   /* RESOLVE LOAD CHILD IN ROUTING START */
