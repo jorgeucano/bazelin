@@ -21,14 +21,16 @@ Sorting internal vs external imports
 3. TODO: create isLocalImport or is 3rd party import check
 */
 
+import {spawnSync} from 'child_process';
 import {writeFile} from 'fs-extra';
-import {join, relative} from 'path';
+import {dirname, join, relative} from 'path';
 import {args, CliArgs} from '../args-parser';
 import {_isCssFile, _isMainProd, _isSassFile, _isTsFile, _isTsSpecFile} from '../file-utils/file-ext-patterns';
 import {readProjectDependencies} from '../file-utils/read-dependencies';
 import {readWorkSpace} from '../file-utils/read-workspace';
 import {getSassFilesDependencies} from '../lib/sass-processor';
 import {getTSFileDependencies} from '../lib/ts-processor';
+import {isSameFolder} from '../rules/rule-utils';
 import {isNgModule} from '../rules/rules-angular/ng-utils';
 import {SassBinaryRule} from '../rules/rules-sass/sass-binary';
 import {SassLibraryRule} from '../rules/rules-sass/sass-library';
@@ -135,14 +137,35 @@ function processFile(file: BazelinFile, workspace: BazelinWorkspace, detectCircu
   }
 
   if (_isTsFile.test(file.name)) {
-    if (isNgModule(file) && _rule) {
-      file.folder.rules.add(_rule);
-      file.isProcessed = true;
-      return true;
-    }
+
 
     if (_isMainProd.test(file.name)) {
       // add it to dependency of child ngModule ???
+      // todo: if main.prod.ts is one level above first module
+      // todo: first ng module has to be created at main.prod.ts folder
+      return true;
+    }
+
+    if (isNgModule(file) && _rule) {
+      // todo: HACK MAIN.PROD.CRAP
+      // for (const _reqBy of file.requiredBy) {
+      //   if (!_isMainProd.test(_reqBy.path)) {
+      //     continue;
+      //   }
+      //   // _ts.push(relative(this.file.folder.path, _reqBy.path));
+      //   if (isSameFolder(_reqBy.path, file.path)) {
+      //     break;
+      //   }
+      //   const _relativeReqByPath = relative(workspace.rootDir, dirname(_reqBy.path));
+      //   const _mainFolder = workspace.folderPathToFolderMap.get(_relativeReqByPath);
+      //   if (!_mainFolder) {
+      //     continue;
+      //   }
+      //   _rule.setRootDir(dirname(_reqBy.path));
+      //   _mainFolder.rules.add(_rule);
+      //   return true;
+      // }
+      file.folder.rules.add(_rule);
       return true;
     }
 
@@ -265,7 +288,10 @@ async function main(_args: CliArgs) {
   for (const [, folder] of workspace.folderPathToFolderMap) {
     folder.buildFile = processFolder(folder);
     if (folder.buildFile) {
-      await writeFile(join(workspace.rootDir, folder.path, `BUILD.bazel`), folder.buildFile);
+      const _outPath = join(workspace.rootDir, folder.path, `BUILD.bazel`);
+      await writeFile(_outPath, folder.buildFile);
+      // todo: make it smarter
+      spawnSync('./node_modules/.bin/buildifier', [_outPath], {stdio: 'inherit'});
     }
   }
 

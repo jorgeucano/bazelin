@@ -7,7 +7,8 @@
   "scripts": {
     "postinstall": "ngc -p ./angular-metadata.tsconfig.json",
     "build": "tsc -p ./src/tsconfig.app.json",
-    "try-cli": "node ./dist/bazelin-cli.js"
+    "try-cli": "node ./dist/bazelin-cli.js",
+    "@bazel/buildifier": "0.22.0"
   },
   "private": true,
   "dependencies": {
@@ -34,7 +35,6 @@
     "@angular/router": "7.2.10",
     "@angular/upgrade": "7.2.10",
     "@bazel/bazel": "0.23.2",
-    "@bazel/buildifier": "0.22.0",
     "@bazel/ibazel": "0.10.0",
     "@bazel/jasmine": "0.27.7",
     "@bazel/karma": "0.27.7",

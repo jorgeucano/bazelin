@@ -1,9 +1,11 @@
 /* tslint:disable:variable-name */
 import {relative} from 'path';
+import {__param} from 'tslib';
 import {_isHtml, _isMainProd, _isSassFile, _isTsFile} from '../../file-utils/file-ext-patterns';
 import {BazelinFile, BazelinWorkspace} from '../../types';
 import {BazelRule} from '../bazel-rule.model';
-import {_intDepToActionName, filePathToActionLabel} from '../rule-utils';
+import {_intDepToActionName, filePathToActionLabel, isSameFolder} from '../rule-utils';
+import {isNgModule} from './ng-utils';
 
 export class NgModuleRule implements BazelRule {
   ruleName = 'ng_module';
@@ -18,6 +20,7 @@ export class NgModuleRule implements BazelRule {
   assets: string[];
 
   private _ngDeps: BazelinFile[] = [];
+  private _rootDir: string;
 
   static createFromFile(file: BazelinFile, workspace: BazelinWorkspace): NgModuleRule {
     // todo: ngModule deps should contain
@@ -35,14 +38,8 @@ export class NgModuleRule implements BazelRule {
     this._ngDeps.push(file);
   }
 
-  // add html dependencies from controller
-  addHtml(filePath: string): void {
-    this.assets.push(filePath);
-  }
-
-  // add css dependencies from controller
-  addCss(filePath: string): void {
-    this.assets.push(filePath);
+  setRootDir(rootDir: string): void {
+    this._rootDir = rootDir;
   }
 
   constructor(private file: BazelinFile, private workspace: BazelinWorkspace) {
@@ -55,6 +52,8 @@ export class NgModuleRule implements BazelRule {
     // scss -> sass_bin -> assets
     // ts -> srcs
     // external -> @npm//module -> deps
+    const _rootDir = this._rootDir || this.file.folder.path;
+
     const _internal = Array.from(this.file.deps.internal)
       .concat(...this._ngDeps
         .map((file: BazelinFile) => Array.from(file.deps.internal)));
@@ -72,24 +71,34 @@ export class NgModuleRule implements BazelRule {
     const _scss = _internal
       .filter((filePath: string) => _isSassFile.test(filePath))
       // .map(_path => relative(this.file.folder.path, _path))
-      .map(_path => _intDepToActionName(this.file, _path, this.workspace));
+      .map(_path => _intDepToActionName(this.file, _path, this.workspace.rootDir));
     const _html = _internal
       .filter(_path => _isHtml.test(_path))
-      .map(_path => relative(this.file.folder.path, _path));
+      .map(_path => relative(_rootDir, _path));
+
+    // dependencies to local ts files
     const _ts = _internal
       .filter(_path => _isTsFile.test(_path))
-      .map(_path => relative(this.file.folder.path, _path));
+      .filter(_path => this.file.path === _path || !isNgModule(this.workspace.filePathToFileMap.get(_path)))
+      .map(_path => relative(_rootDir, _path));
+
+    // dependencies to other ngModules
+    const _tsExt = _internal
+      .filter(_path => _isTsFile.test(_path))
+      .filter(_path => this.file.path !== _path && isNgModule(this.workspace.filePathToFileMap.get(_path)))
+      .map(_path => _intDepToActionName(this.file, _path, this.workspace.rootDir));
 
     // if required by main.prod add it to _internal
+    // todo: HACK MAIN.PROD.CRAP
     for (const _reqBy of this.file.requiredBy) {
-      if (_isMainProd.test(_reqBy.path)) {
-        _ts.push(relative(this.file.folder.path, _reqBy.path));
+      if (_isMainProd.test(_reqBy.path) && isSameFolder(_reqBy.path, this.file.path)) {
+        _ts.push(relative(_rootDir, _reqBy.path));
       }
     }
 
     this.srcs = [..._ts];
     this.assets = [..._html, ..._scss];
-    this.deps = [..._external];
+    this.deps = [..._tsExt, ..._external];
 
     const _result = [
       `ng_module(

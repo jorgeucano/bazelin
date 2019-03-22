@@ -27,7 +27,7 @@ export class SassBinaryRule implements BazelRule {
   static createFromFile(file: BazelinFile, workspace: BazelinWorkspace): SassBinaryRule {
     const fileName = basename(file.path);
     // todo: convert internal/external deps
-    const deps = generateInternalDepLabels(file, workspace);
+    const deps = generateInternalDepLabels(file, workspace.rootDir);
 
     const _obj = new SassBinaryRule({
       name: filePathToActionLabel(file.path),

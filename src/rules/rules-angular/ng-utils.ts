@@ -2,7 +2,10 @@ import { BazelinFile } from '../../types';
 
 const _isNgModuleMark = 'isNgModule';
 
-export function isNgModule(file: BazelinFile): boolean {
+export function isNgModule(file?: BazelinFile): boolean {
+  if (!file) {
+    return false;
+  }
   return !!file.meta.get(_isNgModuleMark);
 }
 

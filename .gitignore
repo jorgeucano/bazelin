@@ -45,4 +45,4 @@ testem.log
 .DS_Store
 Thumbs.db
 
-**/BUILD_res.bazel
+src/testdata/**/BUILD.bazel

@@ -24,7 +24,7 @@ export class SassLibraryRule implements BazelRule {
   static createFromFile(file: BazelinFile, workspace: BazelinWorkspace): SassLibraryRule {
     const fileName = basename(file.path);
     // todo: convert internal/external deps
-    const deps = generateInternalDepLabels(file, workspace);
+    const deps = generateInternalDepLabels(file, workspace.rootDir);
 
     const _obj = new SassLibraryRule({
       name: filePathToActionLabel(file.path),
