@@ -30,6 +30,7 @@ import {readProjectDependencies} from '../file-utils/read-dependencies';
 import {readWorkSpace} from '../file-utils/read-workspace';
 import {getSassFilesDependencies} from '../lib/sass-processor';
 import {getTSFileDependencies} from '../lib/ts-processor';
+import {MainProdNgModule} from '../rules/_hack-rules/main-prod-ng-module';
 import {isSameFolder} from '../rules/rule-utils';
 import {isNgModule} from '../rules/rules-angular/ng-utils';
 import {SassBinaryRule} from '../rules/rules-sass/sass-binary';
@@ -78,7 +79,6 @@ async function attachFileDependencies(workspace: BazelinWorkspace) {
 }
 
 function processFile(file: BazelinFile, workspace: BazelinWorkspace, detectCircular: Set<string>): boolean {
-  console.log(`processing ${relative(workspace.rootDir, file.path)}`);
   // Circular dependency detector
   if (detectCircular.has(file.path)) {
     const _circular = [];
@@ -254,6 +254,42 @@ function processRootFolder(workspace: BazelinWorkspace) {
   });
 }
 
+
+
+// process main.prod.ts
+function processMainEntry(workspace: BazelinWorkspace) {
+  /*
+  1. find main.prod.ts
+  2. find additional entry points (ts and sass)
+  3. generate ngModule for whole app for main.prod.ts
+  4. generate rollup for whole app for main.prod.ts
+  */
+  const _findMainProd = Array.from(workspace.filePathToFileMap)
+    .map((value: [string, BazelinFile]) => value[1])
+    .filter((file: BazelinFile) => _isMainProd.test(file.path));
+  if (!_findMainProd || !_findMainProd.length) {
+    throw Error(`main.prod.ts not found in ${workspace.rootDir}, please check "bazelin" docs and create one`);
+  }
+  const _mainProd = _findMainProd[0];
+
+  const entryPoints = Array.from(workspace.filePathToFileMap)
+    .map((value: [string, BazelinFile]) => value[1])
+    .filter((file: BazelinFile) => file.requiredBy.size === 0);
+
+  entryPoints.forEach((entryPoint: BazelinFile) => {
+    if (_isTsFile.test(entryPoint.path) && isNgModule(entryPoint)) {
+      _mainProd.deps.internal.add(entryPoint.path);
+      for (const dep of entryPoint.deps.external) {
+        _mainProd.deps.external.add(dep);
+      }
+    }
+    if (_isSassFile.test(entryPoint.path)) {
+      _mainProd.deps.internal.add(entryPoint.path);
+    }
+  });
+
+  workspace.srcFolder.rules.add(MainProdNgModule.createFromFile(_mainProd, workspace));
+}
 /*EXTRACT FUNC END*/
 
 /*
@@ -284,7 +320,7 @@ async function main(_args: CliArgs) {
   await attachFileDependencies(workspace);
 
   processRootFolder(workspace);
-
+  processMainEntry(workspace);
   for (const [, folder] of workspace.folderPathToFolderMap) {
     folder.buildFile = processFolder(folder);
     if (folder.buildFile) {

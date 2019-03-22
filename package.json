@@ -2,6 +2,7 @@
   "name": "bazelin",
   "version": "0.0.0",
   "bin": {
+    "bazelin": "./dist/bin/bazelin-cli.js",
     "fix-sass-imports": "./dist/bin/fix-sass-imports-cli.js"
   },
   "scripts": {
