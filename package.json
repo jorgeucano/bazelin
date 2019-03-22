@@ -8,15 +8,15 @@
   "scripts": {
     "postinstall": "ngc -p ./angular-metadata.tsconfig.json",
     "build": "tsc -p ./src/tsconfig.app.json",
-    "try-cli": "node ./dist/bazelin-cli.js",
-    "@bazel/buildifier": "0.22.0"
+    "try-cli": "node ./dist/bazelin-cli.js"
   },
   "private": true,
   "dependencies": {
     "fs-extra": "7.0.1",
     "gonzales-pe": "4.2.3",
     "typescript": "3.2.4",
-    "yargs": "^13.2.2"
+    "yargs": "^13.2.2",
+    "@bazel/buildifier": "0.22.0"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "~0.13.0",

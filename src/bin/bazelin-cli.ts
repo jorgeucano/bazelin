@@ -147,25 +147,17 @@ function processFile(file: BazelinFile, workspace: BazelinWorkspace, detectCircu
     }
 
     if (isNgModule(file) && _rule) {
-      // todo: HACK MAIN.PROD.CRAP
-      // for (const _reqBy of file.requiredBy) {
-      //   if (!_isMainProd.test(_reqBy.path)) {
-      //     continue;
-      //   }
-      //   // _ts.push(relative(this.file.folder.path, _reqBy.path));
-      //   if (isSameFolder(_reqBy.path, file.path)) {
-      //     break;
-      //   }
-      //   const _relativeReqByPath = relative(workspace.rootDir, dirname(_reqBy.path));
-      //   const _mainFolder = workspace.folderPathToFolderMap.get(_relativeReqByPath);
-      //   if (!_mainFolder) {
-      //     continue;
-      //   }
-      //   _rule.setRootDir(dirname(_reqBy.path));
-      //   _mainFolder.rules.add(_rule);
-      //   return true;
-      // }
       file.folder.rules.add(_rule);
+      for (const parent of file.requiredBy) {
+        if (isNgModule(parent)) {
+          for (const rule of parent.rules) {
+            if (rule instanceof NgModuleRule) {
+              rule.addExtDeps(file.deps.external);
+              return true;
+            }
+          }
+        }
+      }
       return true;
     }
 

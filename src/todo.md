@@ -1,7 +1,6 @@
-0. Map npm deps and hacks for angular modules
-- add "@npm//@angular/router" to root modules?
-- "@npm//@angular/platform-browser/animation" -> "@npm//@angular/animation",
-1. Merge ng_module rules inside one folder?
+dene: 0. Map npm deps and hacks for angular modules
+done: - "@npm//@angular/platform-browser/animation" -> "@npm//@angular/animation",
+1. Merge ng_module rules inside one folder? (repo - routing without lazy shit)
 2. Cross dependencies?
 3. Pop all npm deps to rollup_bundle
 1. Create module.prod.ts rule
@@ -35,6 +34,8 @@
         ],
     )
     ```
+2. change how sass rules generate (cuz same file could be a bin and a lib)
+- uncomment assets in main-prod-ng-module 
 2. rollup rule
 3. ts_devserver rule
 4. create WORKSPACE, main.prod.ts, i

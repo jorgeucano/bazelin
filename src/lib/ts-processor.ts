@@ -29,7 +29,6 @@ const TEMPLATE_URLS = `PropertyAssignment:has(Identifier[name=templateUrl]):has(
 const STYLE_URLS = `PropertyAssignment:has(Identifier[name=styleUrls]):has(ArrayLiteralExpression)`;
 
 export interface NgFilesDeps extends BazelinFileDeps {
-  isNgModule: boolean;
   lazyInternal: Set<string>;
   html: Set<string>;
   styles: Set<string>;
@@ -60,7 +59,6 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
   const _isPathMapping = projectDependencies.internal.length ? new RegExp(_isIntDepStr) : {test: (_: string) => false};
 
   const depsFiles: NgFilesDeps = {
-    isNgModule: false,
     external: new Set(),
     internal: new Set(),
     lazyInternal: new Set(),
@@ -137,12 +135,25 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
     });
   });
 
+  // process html dependencies
   for (const dep of depsFiles.html) {
     depsFiles.internal.add(await _resolveHtml(file.path, dep));
   }
 
+  // process style dependencies
   for (const dep of depsFiles.styles) {
     depsFiles.internal.add(await _resolveStyles(file.path, dep));
+  }
+
+  // process/hack external dependencies
+  const _cheatList: {[key: string]: string[]} = {
+    '@angular/platform-browser/animations': ['@angular/platform-browser', '@angular/animations']
+  };
+  for (const dep of depsFiles.external) {
+    if (dep in _cheatList) {
+      depsFiles.external.delete(dep);
+      _cheatList[dep].forEach(newDep => depsFiles.external.add(newDep));
+    }
   }
 
   /* RESOLVE LOAD CHILD IN ROUTING START */

@@ -38,6 +38,12 @@ export class NgModuleRule implements BazelRule {
     this._ngDeps.push(file);
   }
 
+  addExtDeps(extDeps: Set<string>): void {
+    for (const dep of extDeps) {
+      this.file.deps.external.add(dep);
+    }
+  }
+
   setRootDir(rootDir: string): void {
     this._rootDir = rootDir;
   }
@@ -68,10 +74,13 @@ export class NgModuleRule implements BazelRule {
       .map(path => `@npm//${path}`);
 
 
+    // sass assets
     const _scss = _internal
       .filter((filePath: string) => _isSassFile.test(filePath))
       // .map(_path => relative(this.file.folder.path, _path))
       .map(_path => _intDepToActionName(this.file, _path, this.workspace.rootDir));
+
+    // html assets
     const _html = _internal
       .filter(_path => _isHtml.test(_path))
       .map(_path => relative(_rootDir, _path));
@@ -87,14 +96,6 @@ export class NgModuleRule implements BazelRule {
       .filter(_path => _isTsFile.test(_path))
       .filter(_path => this.file.path !== _path && isNgModule(this.workspace.filePathToFileMap.get(_path)))
       .map(_path => _intDepToActionName(this.file, _path, this.workspace.rootDir));
-
-    // if required by main.prod add it to _internal
-    // todo: HACK MAIN.PROD.CRAP
-    for (const _reqBy of this.file.requiredBy) {
-      if (_isMainProd.test(_reqBy.path) && isSameFolder(_reqBy.path, this.file.path)) {
-        _ts.push(relative(_rootDir, _reqBy.path));
-      }
-    }
 
     this.srcs = [..._ts];
     this.assets = [..._html, ..._scss];

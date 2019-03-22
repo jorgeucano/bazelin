@@ -1,5 +1,5 @@
 /* tslint:disable:variable-name */
-import {dirname, relative} from 'path';
+import {basename, dirname, relative} from 'path';
 import {_isHtml, _isMainProd, _isSassFile, _isTsFile} from '../../file-utils/file-ext-patterns';
 import {BazelinFile, BazelinWorkspace} from '../../types';
 import {BazelRule} from '../bazel-rule.model';
@@ -32,14 +32,46 @@ export class MainProdNgModule implements BazelRule {
     // ts -> srcs
     // external -> @npm//module -> deps
 
-    this.assets = [];
-    this.deps = [];
+    const _internal = Array.from(this.file.deps.internal);
+
+    this.file.deps.external.add('@types');
+    const _external = Array.from(this.file.deps.external)
+      .map(path => `@npm//${path}`);
+
+    // dependencies to entry sass files
+    const _scss = _internal
+      .filter((filePath: string) => _isSassFile.test(filePath))
+      // .map(_path => relative(this.file.folder.path, _path))
+      .map(_path => _intDepToActionName(this.file, _path, this.workspace.rootDir));
+
+    // dependencies to entry ts files
+    const _ts = _internal
+      .filter(_path => _isTsFile.test(_path))
+      .map(_path => _intDepToActionName(this.file, _path, this.workspace.rootDir));
+
+    // check is main.prod.ts in the same folder as AppModule
+    let _includeAll = true;
+    for (const dep of this.file.deps.internal) {
+      const _target = this.workspace.filePathToFileMap.get(dep);
+      if (!_target) {
+        continue;
+      }
+
+      if (_target.requiredBy.has(this.file)) {
+        _includeAll = !isSameFolder(_target.path, this.file.path);
+        break;
+      }
+    }
+
+    this.assets = [..._scss];
+    this.deps = [..._ts, ..._external];
+    const _include = _includeAll ? '*.ts' : 'main.prod.ts';
 
     const _result = [
       `ng_module(
-    name = "${dirname(this.file.folder.path)}",
+    name = "${basename(this.file.folder.path)}",
     srcs = glob(
-        include = ["*.ts"],
+        include = ["${_include}"],
         exclude = [
             "**/*.spec.ts",
             "main.ts",
@@ -48,9 +80,10 @@ export class MainProdNgModule implements BazelRule {
         ],
         ),`];
 
+    // todo:
     if (this.assets.length) {
-      const _assets = this.assets.map(asses => `"${asses}"`).join(',');
-      _result.push(`    assets = [${_assets}],`);
+      const _assets = this.assets.map(asses => `\n# "${asses}"`).join(',');
+      _result.push(`    assets = [\n${_assets} \n],`);
     }
 
     if (this.deps.length) {
