@@ -48,3 +48,50 @@ ts_devserver(
     ],
     deps = [":ng-app-lazy-loading"],
 )
+
+##### COULD WORK
+
+ng_module(
+    name = "application",
+     srcs = glob(
+            include = ["*.ts"],
+            exclude = [
+                "**/*.spec.ts",
+                "main.ts",
+                "test.ts",
+                "initialize_testbed.ts",
+            ],
+        ),
+    assets = [
+    ],
+    deps = [
+        "//src/testdata/ng-app-lazy-loading/app:app_module_ts",
+        "//src/testdata/ng-app-lazy-loading/app/lazymodule/component1:component1_module_ts",
+        "@npm//@angular/core",
+        "@npm//@angular/platform-browser",
+        "@npm//@angular/animations",
+        "@npm//@angular/platform-browser-dynamic",
+        "@npm//@angular/router",
+        "@npm//@types",
+    ],
+)
+
+######################################
+# ng serve
+######################################
+
+rollup_bundle(
+    name = "bundle",
+    entry_point = "src/testdata/ng-app-lazy-loading/main.prod",
+    deps = [
+        "//src/testdata/ng-app-lazy-loading:application",
+        "@npm//@angular/core",
+        "@npm//@angular/platform-browser",
+        "@npm//@angular/animations",
+        "@npm//@angular/platform-browser-dynamic",
+        "@npm//@angular/common",
+        "@npm//@angular/router",
+        "@npm//@types",
+        "@npm//rxjs",
+    ],
+)
