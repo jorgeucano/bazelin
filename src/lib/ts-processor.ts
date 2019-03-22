@@ -38,10 +38,9 @@ export interface NgFilesDeps extends BazelinFileDeps {
 - external modules (3rd party)
 - internal TS files
 - html and sass files (from Component Metadata)
-- todo: create a list of angular lazy loading deps from routing
+- create a list of angular lazy loading deps from routing
 */
 
-// todo: use tsquery
 export async function getTSFileDependencies(file: BazelinFile, workspace: BazelinWorkspace) {
   const projectDependencies: ProjectDependencies = workspace.projectDeps;
 
@@ -127,8 +126,8 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
 
     tsquery(decorator, STYLE_URLS).map((statement: any) => {
       statement.initializer.elements.forEach((_styleUrls: any) => {
-        // todo: as for now .sass|.scss|.less imports should be reported
-        // todo: .css imports should be converted into deps to .sass files
+        // todo: [Bazel Blocker] as for now .sass|.scss|.less imports should be reported
+        // .css imports should be converted into deps to .sass files
         // and put to internal dependencies
         depsFiles.styles.add(_styleUrls.text);
       });

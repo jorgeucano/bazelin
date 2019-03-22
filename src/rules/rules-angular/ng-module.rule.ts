@@ -19,6 +19,7 @@ export class NgModuleRule implements BazelRule {
   // relative paths to html files from controllers or ts controller
   assets: string[];
 
+  private _mergedModules = new Set<string>();
   private _ngDeps: BazelinFile[] = [];
   private _rootDir: string;
 
@@ -44,11 +45,15 @@ export class NgModuleRule implements BazelRule {
     }
   }
 
-  setRootDir(rootDir: string): void {
-    this._rootDir = rootDir;
+  // todo: merge modules
+  // 1. merge npm deps
+  // 2. merge internal (.ts, .sass) files deps
+  mergeChildNgModule(module: NgModuleRule): void {
+    this._ngDeps.push(module.file);
+    this._mergedModules.add(module.file.path);
   }
 
-  constructor(private file: BazelinFile, private workspace: BazelinWorkspace) {
+  constructor(public file: BazelinFile, private workspace: BazelinWorkspace) {
     this.name = filePathToActionLabel(this.file.path);
   }
 
@@ -60,19 +65,26 @@ export class NgModuleRule implements BazelRule {
     // external -> @npm//module -> deps
     const _rootDir = this._rootDir || this.file.folder.path;
 
-    const _internal = Array.from(this.file.deps.internal)
-      .concat(...this._ngDeps
-        .map((file: BazelinFile) => Array.from(file.deps.internal)));
-    _internal.push(this.file.path);
-
+    // collect unique dependencies from self and all dependants
+    const _internalSet = new Set([this.file.path]);
     const _externalSet = new Set(['@types', '@angular/platform-browser']);
-    Array.from(this.file.deps.external)
-      .forEach(dep => _externalSet.add(dep));
-    this._ngDeps.forEach(file => file.deps
-      .external.forEach(dep => _externalSet.add(dep)));
+
+    this.file.deps.internal.forEach(dep => _internalSet.add(dep));
+    this.file.deps.external.forEach(dep => _externalSet.add(dep));
+    this._ngDeps.forEach(ngDep => {
+      ngDep.deps.internal.forEach(dep => _internalSet.add(dep));
+      ngDep.deps.external.forEach(dep => _externalSet.add(dep));
+    });
+
+
+    // this._mergedModules.forEach(path => {
+    //   _internalSet.add(path);
+    //   _externalSet.delete(path);
+    // });
+
+    const _internal = Array.from(_internalSet);
     const _external = Array.from(_externalSet)
       .map(path => `@npm//${path}`);
-
 
     // sass assets
     const _scss = _internal
@@ -88,13 +100,27 @@ export class NgModuleRule implements BazelRule {
     // dependencies to local ts files
     const _ts = _internal
       .filter(_path => _isTsFile.test(_path))
-      .filter(_path => this.file.path === _path || !isNgModule(this.workspace.filePathToFileMap.get(_path)))
+      .filter(_path => {
+        // should compile itself
+        return this.file.path === _path
+          // but not other ngModules
+          || !isNgModule(this.workspace.filePathToFileMap.get(_path))
+          // except merged modules
+          || this._mergedModules.has(_path);
+      })
       .map(_path => relative(_rootDir, _path));
 
     // dependencies to other ngModules
     const _tsExt = _internal
       .filter(_path => _isTsFile.test(_path))
-      .filter(_path => this.file.path !== _path && isNgModule(this.workspace.filePathToFileMap.get(_path)))
+      .filter(_path => {
+        // should depend on other local ngModules
+        return isNgModule(this.workspace.filePathToFileMap.get(_path))
+          // except self dependency
+          && this.file.path !== _path
+          // and except merged modules
+          && !this._mergedModules.has(_path);
+      })
       .map(_path => _intDepToActionName(this.file, _path, this.workspace.rootDir));
 
     this.srcs = [..._ts];

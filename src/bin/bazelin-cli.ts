@@ -36,7 +36,7 @@ import {isNgModule} from '../rules/rules-angular/ng-utils';
 import {SassBinaryRule} from '../rules/rules-sass/sass-binary';
 import {SassLibraryRule} from '../rules/rules-sass/sass-library';
 import {BazelinFile, BazelinFolder, BazelinWorkspace} from '../types';
-import {NgModuleRule} from '../rules/rules-angular/ng-module';
+import {NgModuleRule} from '../rules/rules-angular/ng-module.rule';
 
 
 /*EXTRACT FUNC START*/
@@ -247,7 +247,6 @@ function processRootFolder(workspace: BazelinWorkspace) {
 }
 
 
-
 // process main.prod.ts
 function processMainEntry(workspace: BazelinWorkspace) {
   /*
@@ -282,6 +281,40 @@ function processMainEntry(workspace: BazelinWorkspace) {
 
   workspace.srcFolder.rules.add(MainProdNgModule.createFromFile(_mainProd, workspace));
 }
+
+// find folders with 2+ ngModuleRules
+// if modules are dependant
+// merge child to parent
+// remove child rule from folder
+function mergeNgModules(workspace: BazelinWorkspace): void {
+  for (const [, folder] of workspace.folderPathToFolderMap) {
+    const folderNgRules = Array.from(folder.rules)
+      .filter(rule => (rule instanceof NgModuleRule)) as NgModuleRule[];
+    if (folderNgRules.length < 2) {
+      continue;
+    }
+
+    // todo: make parent search simplier
+    for (const rule of folderNgRules) {
+      for (const reqBy of rule.file.requiredBy) {
+        if (!isSameFolder(reqBy.path, rule.file.path)) {
+          continue;
+        }
+
+        for (const parent of folderNgRules) {
+          if (parent.file.path !== reqBy.path) {
+            continue;
+          }
+
+          parent.mergeChildNgModule(rule);
+          folder.rules.delete(rule);
+        }
+      }
+    }
+  }
+}
+
+
 /*EXTRACT FUNC END*/
 
 /*
@@ -312,13 +345,16 @@ async function main(_args: CliArgs) {
   await attachFileDependencies(workspace);
 
   processRootFolder(workspace);
+  // 2 modules in the same folder should be merged if dependant
+  // todo: if 2 modules import same component\directive\etc, child module should be merged in parent
+  mergeNgModules(workspace);
   processMainEntry(workspace);
   for (const [, folder] of workspace.folderPathToFolderMap) {
     folder.buildFile = processFolder(folder);
     if (folder.buildFile) {
       const _outPath = join(workspace.rootDir, folder.path, `BUILD.bazel`);
       await writeFile(_outPath, folder.buildFile);
-      // todo: make it smarter
+      // todo: make it smarter ;)
       spawnSync('./node_modules/.bin/buildifier', [_outPath], {stdio: 'inherit'});
     }
   }
