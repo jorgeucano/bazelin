@@ -23,7 +23,7 @@ Sorting internal vs external imports
 
 import {spawnSync} from 'child_process';
 import {writeFile} from 'fs-extra';
-import {dirname, join, relative} from 'path';
+import {dirname, join, relative, resolve} from 'path';
 import {args, CliArgs} from '../args-parser';
 import {_isCssFile, _isMainProd, _isSassFile, _isTsFile, _isTsSpecFile} from '../file-utils/file-ext-patterns';
 import {readProjectDependencies} from '../file-utils/read-dependencies';
@@ -326,6 +326,7 @@ function mergeNgModules(workspace: BazelinWorkspace): void {
 6. Hope for blind luck :D
 */
 async function main(_args: CliArgs) {
+  console.log(`Processing ${join(resolve(_args.rootDir), _args.srcPath)}`);
   const dependencies = await readProjectDependencies(_args.rootDir);
   const srcFolder: BazelinFolder = {
     path: _args.srcPath,

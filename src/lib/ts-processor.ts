@@ -1,10 +1,10 @@
 import {readFile, stat} from 'fs-extra';
-import {dirname, join} from 'path';
+import {basename, dirname, join} from 'path';
 import * as ts from 'typescript';
 import {SourceFile} from 'typescript';
 
 import {tsquery} from '@phenomnomnominal/tsquery';
-import {_isCssFile, _isSassFile} from '../file-utils/file-ext-patterns';
+import {_isCssFile, _isHtml, _isSassFile} from '../file-utils/file-ext-patterns';
 import {markAsNgModule} from '../rules/rules-angular/ng-utils';
 
 import {BazelinFile, BazelinFileDeps, BazelinWorkspace, ProjectDependencies} from '../types';
@@ -47,13 +47,17 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
   const fileContent = await readFile(file.path, 'utf8');
   const AST: SourceFile = ts.createSourceFile(file.path, fileContent, ts.ScriptTarget.Latest, true);
 
-  const _isExtDepStr = projectDependencies.external.join('|').replace(/@/g, '\\@');
+  const _isExtDepStr = projectDependencies.external
+    .join('|')
+    .replace(/@/g, '\\@')
+    .replace(/\//g, '\/');
   // it's hard to believe you don't have npm deps, but just in case ;)
   const _isExtDep = projectDependencies.external.length ? new RegExp(_isExtDepStr) : {test: (_: string) => false};
   const _isIntDepStr = projectDependencies.internal
     .map((v: string) => v.replace('/*', ''))
     .join('|')
-    .replace(/@/g, '\\@');
+    .replace(/@/g, '\\@')
+    .replace(/\//g, '\/');
   // if tsconfig path mapping mappings are empty
   const _isPathMapping = projectDependencies.internal.length ? new RegExp(_isIntDepStr) : {test: (_: string) => false};
 
@@ -105,6 +109,12 @@ export async function getTSFileDependencies(file: BazelinFile, workspace: Bazeli
   // A list of absolute paths to internal dependencies
   const _internals = new Set<string>();
   for (const dep of depsFiles.internal) {
+    // like : import html from './my.html'
+    // yes, some do
+    if (_isHtml.test(dep)) {
+      _internals.add(join(workspace.rootDir, file.folder.path, dep));
+      continue;
+    }
     _internals.add(await resolveTs(file.path, dep, workspace.rootDir, workspace.projectDeps.pathMappings));
   }
 
@@ -258,6 +268,7 @@ async function resolveTs(fromFile: string, toPath: string, rootDir: string, path
   const _flatMapPaths = [].concat(..._mappedPaths as any);
   const _pathsToTest = _flatMapPaths.map((_aliasPath: string) => join(rootDir, _aliasPath));
 
+  const _timeLabel = `Resolve ${toPath}`;
   return Promise.all([
     _testFile(_path0),
     _testFile(_path1),

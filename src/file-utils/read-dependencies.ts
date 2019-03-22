@@ -7,6 +7,9 @@ import { ProjectDependencies } from '../types';
 const TSCONFIG = 'tsconfig.json';
 const PACKAGEJSON = 'package.json';
 
+const _depsHacks = new Map([
+  ['@ionic/angular', ['@ionic/core']]
+]);
 
 async function _readTSConfigPaths(filePath: string): Promise<{ internal: string[], pathMappings: Array<[string, string[]]> }> {
   let internal: string[] = [];
@@ -26,7 +29,15 @@ async function _readPackageDependencies(filePath: string): Promise<string[]> {
     const deps = packageJson.dependencies ? Object.keys(packageJson.dependencies) : [];
     const devDeps = packageJson.devDependencies ? Object.keys(packageJson.devDependencies) : [];
 
-    return [...deps, ...devDeps];
+    const npmDeps = [...deps, ...devDeps];
+
+    for (const [_marker, _optionalDeps] of _depsHacks) {
+      if (npmDeps.indexOf(_marker) !== -1) {
+        _optionalDeps.forEach(_dep => npmDeps.push(_dep));
+      }
+    }
+
+    return npmDeps;
   } catch {
     return [];
   }

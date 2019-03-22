@@ -5,5 +5,5 @@ export const _isHtml = /\.html$/;
 export const _isTsSpecFile = /\.spec\.ts$|\.mock\.ts$/;
 
 export const _ignoreFiles =
-  /(\.gitignore|BUILD|BUILD_res\.bazel|BUILD\.bazel|BUILD\.want|main\.ts|tsconfig\.json)$/;
+  /(\.gitignore|BUILD|BUILD_res\.bazel|BUILD\.bazel|BUILD\.want|main\.ts|tsconfig\.json|\.spec\.ts|\.mock\.ts)$/;
 export const _isMainProd = /main\.prod.ts$/;
