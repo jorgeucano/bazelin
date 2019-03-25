@@ -3,8 +3,8 @@
 This tool could reduce manual time required to bootstrap Bazel build config files in your angular project
 
 1. create `main.prod.ts`
-2. copy `WORKSPACE` `.bazelrc`
-3. `npm install --save-dev @bazel/bazel @bazel/ibazel @bazel/buildifier @bazel/typescript @bazel/jasmine @bazel/karma
+2. copy `WORKSPACE` `.bazelrc` `.bazelignore` `BUILD.bazel`
+3. `npm install --save-dev @angular/bazel @bazel/bazel @bazel/ibazel @bazel/buildifier @bazel/typescript @bazel/jasmine @bazel/karma
 `
 4. cp `angular-metadata.tsconfig.json`
 5. add `"postinstall": "ngc -p ./angular-metadata.tsconfig.json", to package.json`
