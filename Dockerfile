@@ -12,9 +12,7 @@ RUN export PATH="$PATH:$HOME/bin"
 RUN mkdir -p /home/bazelin
 WORKDIR /home/bazelin
 
-
 COPY ./ ./
 RUN npm --unsafe-perm install
 
-
-CMD ["npm", "run", "bazel-bandle"]
+CMD ["npm", "run", "bazel-build"]

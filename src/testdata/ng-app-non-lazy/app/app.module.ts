@@ -9,11 +9,11 @@ import { AppComponent } from './app.component';
 
 @NgModule({
   imports: [
+    CommonModule,
     BrowserModule,
-    BrowserAnimationsModule,
     // AppRoutingModule,
     // DeepLearningModule,
-    CommonModule,
+    BrowserAnimationsModule,
   ],
   declarations: [
     AppComponent
