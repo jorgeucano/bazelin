@@ -1,5 +1,5 @@
 /* tslint:disable:variable-name */
-import {relative} from 'path';
+import {join, relative, resolve} from 'path';
 import {__param} from 'tslib';
 import {_isHtml, _isMainProd, _isSassFile, _isTsFile} from '../../file-utils/file-ext-patterns';
 import {BazelinFile, BazelinWorkspace} from '../../types';
@@ -63,7 +63,7 @@ export class NgModuleRule implements BazelRule {
     // scss -> sass_bin -> assets
     // ts -> srcs
     // external -> @npm//module -> deps
-    const _rootDir = this._rootDir || this.file.folder.path;
+    const _rootDir = join(this.workspace.rootDir, this._rootDir || this.file.folder.path);
 
     // collect unique dependencies from self and all dependants
     const _internalSet = new Set([this.file.path]);
