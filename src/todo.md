@@ -40,3 +40,6 @@ done: - "@npm//@angular/platform-browser/animation" -> "@npm//@angular/animation
 3. ts_devserver rule
 4. create WORKSPACE, main.prod.ts, i
 5. install npm dependencies?
+6. add support for `angular.json`
+7. make sass import fixes a part of main flow
+8. make a fix of `.sass` to `.css` imports from controllers\directives

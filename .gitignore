@@ -46,3 +46,5 @@ testem.log
 Thumbs.db
 
 src/testdata/**/BUILD.bazel
+.ijwb
+.vscode
