@@ -2,9 +2,9 @@
 
 ### This tool could reduce manual time required to bootstrap Bazel build config files in your angular project
 
-First clone bazelin
+#### steps to use
 
-- git clone https://github.com/valor-software/bazelin.git
+- clone bazelin `git clone https://github.com/valor-software/bazelin.git`
 
 In your proyect
 
